@@ -1,0 +1,47 @@
+/* =========================================================
+   面包浏览器 · 02-base.css (基础重置与背景)
+   ========================================================= */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+  min-height: 100vh; display: flex; flex-direction: column;
+  background: linear-gradient(160deg, var(--bg1), var(--bg2) 55%, var(--bg3));
+  color: var(--ink); overflow-x: hidden; transition: background .6s, color .6s;
+}
+body.modal-open { overflow: hidden; }
+
+/* 顶部光晕背景 */
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none; transition: background 0.6s;
+  background: radial-gradient(600px 400px at 15% 20%, var(--glow-1), transparent 60%),
+              radial-gradient(520px 380px at 85% 72%, var(--glow-2), transparent 60%);
+}
+
+/* 漂浮背景容器 */
+#breadBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+
+/* 漂浮物样式 */
+.bread {
+  position: absolute; top: 0; pointer-events: auto; cursor: pointer;
+  animation: floatUp linear infinite;
+  filter: drop-shadow(0 4px 8px rgba(120, 80, 30, .15));
+}
+.bread i { display: block; font-style: normal; animation: sway ease-in-out infinite alternate; }
+
+@keyframes floatUp {
+  0%   { transform: translateY(105vh) rotate(0deg); opacity: 0; }
+  8%   { opacity: var(--op); }
+  92%  { opacity: var(--op); }
+  100% { transform: translateY(-18vh) rotate(360deg); opacity: 0; }
+}
+@keyframes sway {
+  from { transform: translateX(-16px) rotate(-8deg); }
+  to   { transform: translateX(16px) rotate(8deg); }
+}
+
+.crumb {
+  position: fixed; width: 7px; height: 7px; border-radius: 50%;
+  background: #c88a3d; z-index: 99; pointer-events: none;
+}

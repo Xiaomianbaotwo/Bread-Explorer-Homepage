@@ -1,0 +1,24 @@
+/* =========================================================
+   面包浏览器 · 06-fonts.css (本地内置字体加载)
+   ========================================================= */
+
+/* 英文部分（4个） */
+@font-face { font-family: 'AguarinaScript'; src: url('../assets/fonts/AguarinaScript-Regular.ttf') format('truetype'); }
+@font-face { font-family: 'Cascadia'; src: url('../assets/fonts/Cascadia.ttf') format('truetype'); }
+@font-face { font-family: 'DancingScript'; src: url('../assets/fonts/DancingScript-Regular.ttf') format('truetype'); }
+@font-face { font-family: 'DancingScriptBold'; src: url('../assets/fonts/DancingScript-Bold.ttf') format('truetype'); }
+
+/* 中文部分（13个，严格按照文件名） */
+@font-face { font-family: 'YangRenDong'; src: url('../assets/fonts/杨任东竹石体-Bold.ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunGaoBai'; src: url('../assets/fonts/字魂告白情书体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunJiaoLvMao'; src: url('../assets/fonts/字魂焦绿猫体.ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunXiaoXiaoLe'; src: url('../assets/fonts/字魂开心消消乐体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunTianDou'; src: url('../assets/fonts/字魂甜豆体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunXiaRi'; src: url('../assets/fonts/字魂夏日诗歌体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunAnJiang'; src: url('../assets/fonts/字魂安酱 W5(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiHunYueSong'; src: url('../assets/fonts/字魂阅宋(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiXiaoHunChuLin'; src: url('../assets/fonts/字小魂初林体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiXiaoHunMengMengDa'; src: url('../assets/fonts/字小魂萌萌哒体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiXiaoHunPangPang'; src: url('../assets/fonts/字小魂胖胖体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiXiaoHunTianZhen'; src: url('../assets/fonts/字小魂天真儿风体(商用需授权).ttf') format('truetype'); }
+@font-face { font-family: 'ZiXiaoHunYangRenDong'; src: url('../assets/fonts/字小魂杨任东楷书(商用需授权).ttf') format('truetype'); }

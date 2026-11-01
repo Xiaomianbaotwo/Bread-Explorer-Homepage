@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>面包浏览器</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>%F0%9F%8D%9E</text></svg>">
+  <link rel="stylesheet" href="css/01-vars.css">
+  <link rel="stylesheet" href="css/02-base.css">
+  <link rel="stylesheet" href="css/03-layout.css">
+  <link rel="stylesheet" href="css/04-modals.css">
+  <link rel="stylesheet" href="css/05-effects.css">
+  <link rel="stylesheet" href="css/06-fonts.css">
+</head>
+<body>
+  <div id="breadBg"></div>
+
+  <header class="fade-in">
+    <div class="logo"><span class="b">🍞</span>面包浏览器 <small>Bread Browser</small></div>
+    <div class="header-actions">
+      <button class="icon-btn" id="btnPoints" title="积分中心">🎁 <span id="pointsDisplay" style="font-size:14px; font-weight:bold; margin-left:4px;">0</span></button>
+      <button class="icon-btn" id="btnMail" title="邮件中心" style="display:none;">📧 <span id="mailDot"></span></button>
+      <button class="icon-btn" id="btnHistory" title="搜索历史">🕒</button>
+      <button class="icon-btn" id="btnThemeSelect" title="切换主题">🎨</button>
+      <button class="icon-btn" id="btnFontSelect" title="切换字体">🔤</button>
+      <button class="icon-btn" id="btnUser" title="用户中心">
+        <span class="icon-placeholder">👤</span>
+        <img class="mini-avatar" id="topAvatar" src="" alt="">
+        <span id="userNameDisplay">登录</span>
+      </button>
+      <button class="icon-btn" id="btnTheme" title="切换日/夜模式">🌙</button>
+    </div>
+  </header>
+
+  <div id="devPanel">
+    <h4>🛠️ 开发者控制面板</h4>
+    <button class="btn ghost" id="btnDevAddDay">🛠️ 模拟增加注册时长</button>
+    <button class="btn ghost" id="btnDevSetDay">🛠️ 模拟设置注册时长</button>
+    <button class="btn ghost" id="btnDevSetPoints" style="color:#e67e22; border-color:#e67e22;">🪙 设置用户积分</button>
+    <div class="dev-grid">
+      <button class="btn ghost" id="btnDevSetNone">设为普通用户</button>
+      <button class="btn ghost" id="btnDevSetVip" style="color:#d35400; border-color:#d35400;">设为 VIP</button>
+      <button class="btn ghost" id="btnDevSetSvip" style="color:#8e44ad; border-color:#8e44ad;">设为 SVIP</button>
+      <button class="btn ghost" id="btnDevSetForever" style="color:#e74c3c; border-color:#e74c3c;">永久 SVIP</button>
+    </div>
+    <button class="btn ghost" id="btnDevManageCodes" style="color:#00bcd4; border-color:#00bcd4;">🎫 管理自定义兑换码</button>
+    <button class="btn ghost" id="btnDevGenCode" style="color:#27ae60; border-color:#27ae60;">🎲 生成兑换码</button>
+    <button class="btn ghost" id="btnDevStartRain" style="color:#e91e63; border-color:#e91e63;">🧧 立即触发红包雨</button>
+    <button class="btn ghost" id="btnDevAutoRain" style="color:#9b59b6; border-color:#9b59b6;">🤖 自动领取红包(2秒)</button>
+    <button class="btn ghost" id="btnDevRunCode" style="color:#3498db; border-color:#3498db;">💻 执行自定义代码</button>
+    <button class="dev-btn-close" id="btnDevClose">关闭开发者模式</button>
+  </div>
+
+  <main>
+    <div class="fade-in" style="animation-delay: .05s">
+      <h1 class="clock" id="clock"></h1>
+      <p class="date-line" id="dateLine"></p>
+    </div>
+    <p class="greeting fade-in" style="animation-delay: .15s" id="greeting"></p>
+    <p class="quote fade-in" style="animation-delay: .25s" id="quote"></p>
+
+    <div class="search-wrap fade-in" style="animation-delay: .35s" id="searchWrap">
+      <div class="search-box">
+        <div class="engine-btn" id="engineBtn" title="切换搜索引擎"><span id="engineIcon">☁️</span></div>
+        <input id="searchInput" type="text" autocomplete="off" placeholder="搜索，或直接输入网址…">
+        <button class="go" id="btnGo">搜索</button>
+      </div>
+      <div class="engine-menu" id="engineMenu"></div>
+    </div>
+
+    <p class="sites-title fade-in" style="animation-delay: .45s">🧺 我的面包篮（可拖拽排序，悬停删除）</p>
+    <div class="sites" id="sitesGrid"></div>
+  </main>
+
+  <div class="overlay" id="siteOverlay">
+    <div class="modal">
+      <h3>🧺 添加站点</h3>
+      <label>名称<input type="text" id="fName" maxlength="12" placeholder="例如：Google"></label>
+      <label>网址<input type="text" id="fUrl" placeholder="例如：https://www.google.com"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnSiteCancel">取消</button>
+        <button class="btn primary" id="btnSiteSave">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="loginOverlay">
+    <div class="modal">
+      <div class="auth-tabs">
+        <div class="auth-tab active" id="tabLogin">登录</div>
+        <div class="auth-tab" id="tabRegister">注册</div>
+      </div>
+      <div id="quickLoginArea" style="display: none; margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px dashed var(--card-border);">
+        <label style="margin-top: 0; color: var(--accent);">历史账号一键登录：</label>
+        <div id="quickLoginList" style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px;"></div>
+      </div>
+      <label id="authLabel">账户名称<input type="text" id="authName" placeholder="请输入用户名"></label>
+      <label id="pwdLabel">密码 / 面包 Key<input type="password" id="authPwd" placeholder="请输入密码，或 bread-key-xxx"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnAuthCancel">取消</button>
+        <button class="btn primary" id="btnAuthSubmit">登录</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="userOverlay">
+    <div class="modal">
+      <div class="user-profile">
+        <div class="avatar-wrap" id="avatarWrap" title="点击修改头像">
+          <img id="userAvatar" src="" style="display:none;">
+          <div id="userAvatarPlaceholder" class="avatar-placeholder">🍞</div>
+          <input type="file" id="avatarUpload" accept="image/*" style="display: none;">
+        </div>
+        <div class="profile-name" id="profileName">用户名</div>
+        <div class="join-days" id="profileDays">陪伴天数计算中...</div>
+        <div class="vip-status" id="vipStatusText"></div>
+        <div class="vip-countdown" id="vipCountdown"></div>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px; padding:12px; background:rgba(150,150,150,0.1); border-radius:12px;">
+          <span style="font-size:14px; font-weight:600; color:var(--ink);">拆红包屏幕抖动</span>
+          <input type="checkbox" id="screenShakeToggle" style="width:20px; height:20px; cursor:pointer;">
+        </div>
+      </div>
+      <div class="modal-actions" style="flex-direction: column; gap: 10px; margin-top: 16px;">
+        <button class="btn ghost" id="btnRedeemCode">输入兑换码 / 激活特权</button>
+        <button class="btn ghost" id="btnChangePwd">修改密码</button>
+        <button class="btn ghost" id="btnDeleteAccount" style="color: #e74c3c; border-color: #e74c3c;">注销账号</button>
+        <button class="btn primary" id="btnLogout">退出登录</button>
+        <button class="btn ghost" id="btnUserClose" style="border:none;">关闭面板</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="themeOverlay">
+    <div class="modal" style="width:min(600px, 100%);">
+      <h3>🎨 主题中心</h3>
+      <p style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:16px;">带 ✨ 的为 Plus 豪华版（支持烟花）</p>
+      <div id="themeGrid" class="theme-grid-layout"></div>
+      <div class="modal-actions" style="justify-content: center; margin-top: 20px;">
+        <button class="btn ghost" id="btnThemeClose" style="width:100%;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ★ 字体中心弹窗（已清理干净） -->
+  <div class="overlay" id="fontOverlay">
+    <div class="modal" style="width:min(650px, 100%);">
+      <h3>🔤 字体中心</h3>
+      
+      <div class="font-preview-container">
+        <div class="preview-label">英文/数字预览：</div>
+        <div id="enFontPreview" class="font-preview-box">Aa Bb Cc 123</div>
+        
+        <div class="preview-label" style="margin-top:12px;">中文/符号预览：</div>
+        <div id="zhFontPreview" class="font-preview-box" style="height:120px; overflow-y:auto; font-size:14px; line-height:1.6; text-align:left;"></div>
+      </div>
+
+      <div class="font-selector-group" style="margin-top:16px;">
+        <!-- 英文/数字 -->
+        <div class="font-row-header">
+          <span>英/数字：</span>
+          <button class="btn ghost" id="btnUploadEnFont" style="padding: 4px 8px; font-size:12px;">📁 上传字体(支持多选)</button>
+          <input type="file" id="enFontUpload" accept=".ttf,.otf,.woff,.woff2" multiple style="display: none;">
+        </div>
+        <input type="text" id="enFontSearch" placeholder="搜索英文字体..." class="font-search-input">
+        <div id="enFontList" class="font-list-box"></div>
+
+        <!-- 中文/符号 -->
+        <div class="font-row-header" style="margin-top:16px;">
+          <span>中/符号：</span>
+          <button class="btn ghost" id="btnUploadZhFont" style="padding: 4px 8px; font-size:12px;">📁 上传字体(支持多选)</button>
+          <input type="file" id="zhFontUpload" accept=".ttf,.otf,.woff,.woff2" multiple style="display: none;">
+        </div>
+        <input type="text" id="zhFontSearch" placeholder="搜索中文字体..." class="font-search-input">
+        <div id="zhFontList" class="font-list-box"></div>
+      </div>
+      
+      <div class="modal-actions" style="justify-content: center; margin-top: 24px;">
+        <button class="btn ghost" id="btnFontClose" style="width:100%;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="redeemOverlay">
+    <div class="modal">
+      <h3>🎫 兑换特权</h3>
+      <label>输入兑换码<input type="text" id="redeemInput" placeholder="例如：SVIP-STRING-1Y-A1B2C3D"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnRedeemCancel">取消</button>
+        <button class="btn primary" id="btnRedeemSubmit">立即兑换</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="pwdOverlay">
+    <div class="modal">
+      <h3>🔐 修改密码</h3>
+      <label>原密码 / 面包 Key<input type="password" id="oldPwd" placeholder="原密码或 Key"></label>
+      <label>新密码<input type="password" id="newPwd" placeholder="设置新密码"></label>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnPwdCancel">取消</button>
+        <button class="btn primary" id="btnPwdSave">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="mailOverlay">
+    <div class="modal">
+      <h3>📬 我的邮件</h3>
+      <div style="display:flex; justify-content:space-between; margin-bottom:10px;">
+        <button class="btn ghost" id="btnClaimAll" style="font-size:12px; padding:6px 10px; color:var(--accent); border-color:var(--accent);">📥 一键领取所有附件</button>
+        <button class="btn ghost" id="btnDeleteAllMails" style="font-size:12px; padding:6px 10px; color:#e74c3c; border-color:#e74c3c;">🗑 删除全部邮件</button>
+      </div>
+      <div id="mailList" style="max-height:350px; overflow-y:auto; margin-bottom:20px; border-top:1px solid var(--card-border);"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnMailClose" style="border:none;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="registerSuccessOverlay">
+    <div class="modal">
+      <h3>🎉 注册成功</h3>
+      <p style="font-size: 14px; margin-bottom: 12px; text-align: center;">你的专属面包 Key（用于找回密码）：</p>
+      <div id="regSuccessKey" style="background: var(--card); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; text-align: center; word-break: break-all; color: var(--accent); user-select: all; border: 1px dashed var(--accent); margin-bottom: 12px; cursor: pointer;" title="点击复制"></div>
+      <p style="font-size: 12px; color: var(--ink-soft); text-align: center; margin-bottom: 20px;">点击上方 Key 可快速复制，请务必截图保存！</p>
+      <div class="modal-actions" style="justify-content: center;">
+        <button class="btn primary" id="btnRegSuccessClose" style="width: 100%;">我已保存</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="deleteConfirmOverlay">
+    <div class="modal">
+      <h3>⚠️ 注销账号</h3>
+      <p style="text-align: center; margin-bottom: 20px; color: var(--ink);">确定要注销账号吗？<br><strong style="color: #e74c3c;">所有数据将永久清空且无法恢复！</strong></p>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnDeleteCancel">取消</button>
+        <button class="btn danger" id="btnDeleteConfirm">确认注销</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="historyOverlay">
+    <div class="modal">
+      <h3>🕒 搜索历史</h3>
+      <div id="historyList" style="max-height: 400px; overflow-y: auto; margin-bottom: 20px; text-align: left; padding-right: 4px;"></div>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button class="btn ghost" id="btnClearHistory" style="color:#e74c3c; border-color:#e74c3c;">清空全部</button>
+        <button class="btn ghost" id="btnHistoryClose">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="pointsOverlay">
+    <div class="modal" style="width:min(460px, 100%);">
+      <h3>🎁 积分中心</h3>
+      <div class="points-header">当前可用积分：<span id="shopPoints">0</span> 🪙</div>
+      <div style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:12px;">每日通过邮件发送，月底清零。VIP享9折，SVIP享7折。</div>
+      <div style="max-height: 320px; overflow-y: auto; padding-right:4px;">
+        <h4 style="margin:8px 0; font-size:14px; color:var(--accent);">👑 兑换特权 (可买多份)</h4>
+        <div class="shop-grid" id="shopGridVip"></div>
+        <div class="shop-grid" id="shopGridSvip"></div>
+        <h4 style="margin:16px 0 8px; font-size:14px; color:var(--accent);">🎨 主题永久解锁</h4>
+        <div class="theme-shop-grid" id="themeShopGrid"></div>
+      </div>
+      <div class="modal-actions" style="justify-content: center; margin-top:16px;">
+        <button class="btn ghost" id="btnPointsClose" style="width: 100%;">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="inputOverlay">
+    <div class="modal">
+      <h3 id="inputTitle">输入</h3>
+      <p id="inputDesc" style="font-size:13px; color:var(--ink-soft); margin-bottom:12px; text-align:left;"></p>
+      <input type="text" id="inputValue" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnInputCancel">取消</button>
+        <button class="btn primary" id="btnInputConfirm">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="confirmOverlay">
+    <div class="modal">
+      <h3 id="confirmTitle">确认</h3>
+      <div id="confirmDesc" style="text-align: center; margin-bottom: 20px; color: var(--ink); line-height: 1.6;"></div>
+      <div class="modal-actions">
+        <button class="btn ghost" id="btnGlobalConfirmCancel">取消</button>
+        <button class="btn danger" id="btnGlobalConfirmOk">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="codeManageOverlay">
+    <div class="modal" style="width:min(500px, 100%);">
+      <h3>🎫 管理自定义兑换码</h3>
+      <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px;">直接输入**新的**完整兑换码，保存后追加到系统。每行一个。</p>
+      <textarea id="codeManageInput" rows="6" placeholder="每行一个，例如：&#10;VIP-STRING-1Q-A1B2C3D&#10;SVIP-STRING-LIFE-HIJKLMN&#10;POINT-STRING-500-X1Y2Z3A"></textarea>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button class="btn ghost" id="btnCodeManageCancel">取消</button>
+        <button class="btn primary" id="btnCodeManageSave">保存并追加</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="runCodeOverlay">
+    <div class="modal" style="width:min(500px, 100%);">
+      <h3>💻 执行自定义代码</h3>
+      <p style="font-size: 12px; color: var(--ink-soft); margin-bottom: 8px;">输入 JavaScript 代码，点击运行即可作用于当前页面。</p>
+      <textarea id="runCodeInput" rows="6" placeholder="例如：document.body.style.background = '#333';"></textarea>
+      <div class="modal-actions" style="justify-content: space-between;">
+        <button class="btn ghost" id="btnRunCodeCancel">取消</button>
+        <button class="btn primary" id="btnRunCodeExecute">运行代码</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="redPacketRain">
+    <div id="rpHeader">
+      <div>🧧 抢金币啦！ 🧧</div>
+      <div id="rpTimer">10.0s</div>
+      <div id="rpScore">已收集：0 金币</div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="js/01-core.js" defer></script>
+  <script src="js/02-config.js" defer></script>
+  <script src="js/03-ui.js" defer></script>
+  <script src="js/04-auth.js" defer></script>
+  <script src="js/05-font-theme.js" defer></script>
+  <script src="js/06-sites.js" defer></script>
+  <script src="js/07-mail.js" defer></script>
+  <script src="js/08-points.js" defer></script>
+  <script src="js/09-redpacket.js" defer></script>
+  <script src="js/10-dev.js" defer></script>
+  <script src="js/12-fireworks.js" defer></script>
+  <script src="js/11-init.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+/* =========================================================
+   05-effects.css
+   ========================================================= */
+
+#redPacketRain {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px);
+  z-index: 9999; display: none; flex-direction: column; align-items: center; justify-content: center;
+  overflow: hidden; user-select: none;
+}
+#redPacketRain.show { display: flex; }
+#rpHeader {
+  position: absolute; top: 20px; z-index: 10000; text-align: center; color: #fff;
+  font-size: 30px; font-weight: bold; text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+}
+#rpTimer { color: #f1c40f; font-size: 40px; }
+#rpScore { font-size: 20px; margin-top: 10px; }
+
+.falling-packet {
+  position: absolute; top: -100px;
+  width: 60px; height: 70px; 
+  border-radius: 8px; cursor: pointer; 
+  display: flex; align-items: center; justify-content: center; 
+  animation: drop linear forwards;
+}
+.falling-packet.pkt-normal { background: #c0392b; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+.falling-packet.pkt-normal::before { content: '🧧'; position: absolute; font-size: 32px; }
+.falling-packet.pkt-gold { background: #f1c40f; box-shadow: 0 0 15px #f1c40f, 0 4px 15px rgba(0,0,0,0.3); transform: scale(1.1); }
+.falling-packet.pkt-gold::before { content: '🎁'; position: absolute; font-size: 34px; }
+.falling-packet.pkt-star { background: #f39c12; box-shadow: 0 0 15px #f39c12, 0 4px 15px rgba(0,0,0,0.3); transform: scale(1.15); }
+.falling-packet.pkt-star::before { content: '⭐'; position: absolute; font-size: 36px; }
+.falling-packet.pkt-diamond { background: #00bcd4; box-shadow: 0 0 20px #00bcd4, 0 4px 15px rgba(0,0,0,0.3); transform: scale(1.2); }
+.falling-packet.pkt-diamond::before { content: '💎'; position: absolute; font-size: 38px; }
+
+@keyframes drop {
+  from { transform: translateY(0); }
+  to { transform: translateY(120vh); }
+}
+
+.toast {
+  position: fixed; top: 22px; left: 50%; transform: translate(-50%, -180%);
+  background: var(--card); border: 1px solid var(--card-border); backdrop-filter: blur(12px);
+  padding: 12px 22px; border-radius: 999px; box-shadow: var(--shadow); font-size: 14px;
+  z-index: 10000; transition: transform .45s cubic-bezier(.34, 1.56, .64, 1); color: var(--ink);
+}
+.toast.show { transform: translate(-50%, 0); }
+
+.history-group-title {
+  font-size: 12px; font-weight: 700; color: var(--ink-soft);
+  padding: 10px 6px 4px; letter-spacing: 1px; opacity: .8;
+}
+.history-item {
+  padding: 10px 12px; border-radius: 10px; cursor: pointer;
+  font-size: 14px; transition: .2s; margin-bottom: 4px;
+  display: flex; align-items: center; gap: 8px;
+}
+.history-item::before { content: '🔍'; font-size: 12px; opacity: .5; }
+.history-item:hover { background: var(--card); color: var(--accent); }
+
+/* ★ 新增：屏幕抖动动画 */
+@keyframes screenShake {
+  0% { transform: translate(0, 0) rotate(0deg); }
+  20% { transform: translate(-4px, 4px) rotate(-1deg); }
+  40% { transform: translate(4px, -4px) rotate(1deg); }
+  60% { transform: translate(-4px, -4px) rotate(-1deg); }
+  80% { transform: translate(4px, 4px) rotate(1deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+body.shake-screen {
+  animation: screenShake 0.3s ease-in-out;
+}

@@ -1,0 +1,183 @@
+/* =========================================================
+   面包浏览器 · 04-modals.css
+   ========================================================= */
+
+.overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, .5); backdrop-filter: blur(4px); display: none; align-items: center; justify-content: center; z-index: 60; padding: 20px; }
+.overlay.show { display: flex; }
+
+.modal { 
+  width: min(400px, 100%); 
+  max-height: 90vh; 
+  overflow-y: auto; 
+  background: var(--bg1); 
+  border: 1px solid var(--card-border); 
+  border-radius: 24px; 
+  padding: 26px; 
+  box-shadow: var(--shadow); 
+  animation: rise .3s; 
+}
+.modal::-webkit-scrollbar { width: 6px; }
+.modal::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
+.modal::-webkit-scrollbar-track { background: transparent; }
+
+.modal h3 { margin-bottom: 16px; text-align: center; }
+.modal label { display: block; font-size: 13px; color: var(--ink-soft); margin: 12px 0 6px; text-align: left; font-weight: 600; }
+.modal input, .modal textarea, .modal select { width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); outline: none; font-size: 14px; font-family: inherit; }
+.modal textarea { resize: vertical; min-height: 100px; }
+.modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--accent); }
+
+/* ★ 修复下拉框在深色主题下选项变黑的问题 */
+.modal select option { background-color: var(--bg1); color: var(--ink); }
+
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+.btn { border: none; cursor: pointer; padding: 10px 18px; border-radius: 12px; font-size: 14px; transition: .2s; display: flex; justify-content: center; align-items: center; }
+.btn.primary { background: var(--accent); color: #fff; font-weight: 600; }
+.btn.danger { background: #e74c3c; color: #fff; font-weight: 600; }
+.btn.ghost { background: transparent; color: var(--ink-soft); border: 1px solid var(--card-border); }
+.btn:hover { transform: translateY(-2px); }
+
+.auth-tabs { display: flex; border-bottom: 1px solid var(--card-border); margin-bottom: 16px; justify-content: center; }
+.auth-tab { padding: 8px 16px; cursor: pointer; font-weight: 600; color: var(--ink-soft); opacity: 0.6; border-bottom: 2px solid transparent; }
+.auth-tab.active { color: var(--accent); opacity: 1; border-bottom-color: var(--accent); }
+
+.user-profile { text-align: center; margin-bottom: 20px; }
+.avatar-wrap { position: relative; width: 90px; height: 90px; margin: 0 auto 12px; cursor: pointer; transition: transform 0.2s; }
+.avatar-wrap:hover { transform: scale(1.05); }
+.avatar-wrap img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; border: 3px solid var(--card-border); background: #fff; }
+.avatar-placeholder { width: 100%; height: 100%; border-radius: 50%; background: var(--accent); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 40px; font-weight: bold; border: 3px solid var(--card-border); }
+.avatar-wrap.is-vip img, .avatar-wrap.is-vip .avatar-placeholder { border-color: #f1c40f; box-shadow: 0 0 15px rgba(241,196,15,0.4); }
+.avatar-wrap.is-svip img, .avatar-wrap.is-svip .avatar-placeholder { border-color: #9b59b6; box-shadow: 0 0 20px rgba(155,89,182,0.6); }
+
+.profile-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.profile-name.is-vip { color: #d35400; }
+body.dark .profile-name.is-vip { color: #f1c40f; }
+.profile-name.is-svip { color: #8e44ad; }
+body.dark .profile-name.is-svip { color: #bb8fce; }
+
+.vip-tag { font-size: 11px; padding: 2px 6px; border-radius: 6px; font-weight: bold; color: #fff; }
+.vip-tag.vip { background: linear-gradient(135deg, #f1c40f, #e67e22); }
+.vip-tag.svip { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+
+.join-days { font-size: 13px; color: var(--ink-soft); margin-bottom: 12px; }
+.vip-status { font-size: 12px; color: var(--accent); font-weight: 600; }
+.vip-countdown { font-size: 13px; color: #e74c3c; font-weight: 700; margin: 4px 0 12px; height: 18px; font-variant-numeric: tabular-nums; }
+
+.theme-grid-layout {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 12px;
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.theme-grid-layout::-webkit-scrollbar { width: 6px; }
+.theme-grid-layout::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
+
+.theme-btn { padding: 10px 8px; border-radius: 12px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.2s; position: relative; text-align: center; }
+.theme-btn:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: var(--shadow); }
+.theme-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+.theme-btn.locked { opacity: 0.6; border-style: dashed; }
+.theme-btn.locked::after { content: ' 🔒1500积分'; font-size: 10px; color: #e74c3c; display: block; margin-top: 4px; }
+
+/* ★ 字体中心全新样式 */
+.font-selector-group { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; padding: 10px; background: rgba(0,0,0,0.03); border-radius: 12px; }
+body.dark .font-selector-group { background: rgba(255,255,255,0.03); }
+
+.font-row-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.font-search-input { width: 100%; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); font-size: 13px; margin-bottom: 8px; outline: none; }
+.font-search-input:focus { border-color: var(--accent); }
+
+.font-list-box { height: 120px; overflow-y: auto; border: 1px solid var(--card-border); border-radius: 8px; background: var(--card); padding: 4px; }
+.font-list-box::-webkit-scrollbar { width: 4px; }
+.font-list-box::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
+
+.font-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 14px; transition: 0.2s; color: var(--ink); margin-bottom: 2px; }
+.font-item:hover { background: rgba(150,150,150,0.15); }
+.font-item.active { background: var(--accent); color: #fff; font-weight: bold; }
+.font-item .del-btn { color: #e74c3c; font-size: 12px; opacity: 0.6; cursor: pointer; padding: 4px; }
+.font-item .del-btn:hover { opacity: 1; }
+
+.mail-item { border-bottom: 1px solid var(--card-border); padding: 12px 10px; transition: 0.2s; }
+.mail-item:hover { background: var(--card); }
+.mail-title { font-weight: bold; font-size: 14px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+.mail-date { font-size: 11px; color: var(--ink-soft); }
+.mail-content { font-size: 13px; color: var(--ink-soft); margin-top: 10px; display: none; border-top: 1px dashed var(--card-border); padding-top: 10px;}
+.mail-item.open .mail-content { display: block; }
+.mail-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+.points-header { text-align: center; margin-bottom: 16px; font-size: 14px; }
+.points-header span { font-size: 24px; font-weight: bold; color: var(--accent); }
+.shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.shop-item { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 12px; text-align: center; cursor: pointer; transition: 0.2s; position: relative; }
+.shop-item:hover { border-color: var(--accent); transform: scale(1.02); }
+.shop-item .title { font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+.shop-item .price { font-size: 12px; color: #e74c3c; }
+
+.theme-shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.theme-shop-item { background: var(--card); border: 1px solid var(--card-border); border-radius: 12px; padding: 10px; text-align: center; cursor: pointer; transition: 0.2s; }
+.theme-shop-item:hover { border-color: var(--accent); }
+.theme-shop-item.owned { opacity: 0.6; cursor: default; background: transparent; }
+.theme-shop-item.owned:hover { border-color: var(--card-border); }
+.theme-shop-item .title { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.theme-shop-item .price { font-size: 11px; color: var(--accent); }
+
+#devPanel {
+  position: fixed; top: 80px; right: 30px; width: 300px;
+  background: var(--bg1); border: 2px solid #e74c3c; border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(231, 76, 60, 0.3); padding: 16px; z-index: 999;
+  display: none; flex-direction: column; gap: 10px; animation: rise 0.3s;
+}
+#devPanel.show { display: flex; }
+#devPanel h4 { text-align: center; color: #e74c3c; font-size: 16px; margin-bottom: 4px; }
+.dev-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.dev-grid .btn { padding: 8px; font-size: 13px; }
+.dev-btn-close { background: #e74c3c; color: #fff; font-weight: bold; border-radius: 8px; border: none; cursor: pointer; padding: 10px; transition: 0.2s; margin-top: 4px; }
+.dev-btn-close:hover { background: #c0392b; }
+/* ★ 新增：字体预览区样式 */
+.font-preview-container {
+  background: rgba(150, 150, 150, 0.05);
+  border: 1px dashed var(--card-border);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.preview-label {
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.font-preview-box {
+  background: var(--card);
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  padding: 10px;
+  text-align: center;
+  word-break: break-all;
+  color: var(--ink);
+  font-size: 18px;
+  transition: font-family 0.3s;
+}
+
+/* 字体列表小样 */
+.font-item { 
+  display: flex; 
+  justify-content: space-between; 
+  align-items: center; 
+  padding: 8px 12px; 
+  border-radius: 6px; 
+  cursor: pointer; 
+  font-size: 14px; 
+  transition: 0.2s; 
+  color: var(--ink); 
+  margin-bottom: 2px; 
+}
+.font-item:hover { background: rgba(150,150,150,0.15); }
+.font-item.active { background: var(--accent); color: #fff; font-weight: bold; }
+.font-item .del-btn { color: #e74c3c; font-size: 12px; opacity: 0.6; cursor: pointer; padding: 4px; }
+.font-item .del-btn:hover { opacity: 1; }
+
+/* 名字和小样的对齐 */
+.font-item-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-item-sample { margin-left: 12px; font-size: 16px; opacity: 0.8; }
