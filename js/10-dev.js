@@ -9,9 +9,18 @@ window.isAutoRainEnabled = false; // ★ 自动领取开关状态
 
 function closeDevPanel() {
   window.isDevMode = false;
+  window.isAutoRainEnabled = false; // ★ 核心修复：关闭面板时强制关闭自动领取
+  
+  // 恢复按钮的默认样式和文字
+  const btn = $('#btnDevAutoRain');
+  if (btn) {
+    btn.style.color = '#9b59b6';
+    btn.style.background = 'transparent';
+    btn.textContent = '🤖 自动领取红包(0.7秒)';
+  }
+
   $('#devPanel').classList.remove('show');
 }
-
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
 
@@ -51,19 +60,19 @@ $('#btnDevStartRain').onclick = () => {
   }
 };
 
-// ★ 新增：自动领取红包开关
+//自动领取红包开关
 $('#btnDevAutoRain').onclick = () => {
   window.isAutoRainEnabled = !window.isAutoRainEnabled;
   const btn = $('#btnDevAutoRain');
   if (window.isAutoRainEnabled) {
     btn.style.color = '#fff';
     btn.style.background = '#9b59b6';
-    btn.textContent = '🤖 自动领取：已开启';
-    showToast('已开启自动领取（红包出现3秒后自动点击）', '🤖');
+    btn.textContent = '🤖 自动领取：已开启(0.7秒)';
+    showToast('已开启自动领取（红包出现0.7秒后自动点击）', '🤖');
   } else {
     btn.style.color = '#9b59b6';
     btn.style.background = 'transparent';
-    btn.textContent = '🤖 自动领取红包(3秒)';
+    btn.textContent = '🤖 自动领取红包(0.7秒)';
     showToast('已关闭自动领取', '🔒');
   }
 };

@@ -194,7 +194,7 @@ function startRedPacketRain() {
         if (packet.parentNode && window.isRpPlaying) {
           handleClick(null); 
         }
-      }, 2000); 
+      }, 700); 
     }
 
     rainLayer.appendChild(packet);
