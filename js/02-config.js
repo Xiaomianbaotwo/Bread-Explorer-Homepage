@@ -22,6 +22,11 @@ const THEMES = {
   blackgold:       { name: '👑 暗夜黑金', emojis: ['👑','♠️','🪙'], level: 2, cost: 1500 },
   'blackgold-plus':{ name: '✨ 暗夜黑金 Plus', emojis: ['👑','♠️','🪙'], level: 2, cost: 1500 },
   
+  // 花语秘境系列
+  flower:          { name: '🌺 花语秘境', emojis: ['🌹','🌷','🌻'], level: 0 },
+  'flower-plus':   { name: '✨ 花语秘境 Plus', emojis: ['🌹','🌷','🌻','🌼','🌺'], level: 0, cost: 4500 },
+  'flower-max':    { name: '👑 花语秘境 Max', emojis: ['🌹','🌷','🌻','🌼','🌺','🌸','🪷','🏵️','🦋'], level: 0, cost: 15000 },
+
   // 新春主题
   spring:          { name: '🧧 新春大吉', emojis: ['🧧','🏮','🧨','🐉','🥟','🍊','💴','🎁'], level: 0, isSpring: true },
   'spring-plus':   { name: '✨ 新春大吉 Plus', emojis: ['🧧','🏮','🧨','🐉','🥟','🍊','💴','🎁'], level: 0, isSpring: true }

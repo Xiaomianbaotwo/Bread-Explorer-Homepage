@@ -1,6 +1,6 @@
 /* =========================================================
    08-points.js
-   积分中心、购买VIP、解锁主题（新春限时12月购买）
+   积分中心、购买VIP、解锁主题（包含花语秘境前置校验）
    ========================================================= */
 
 function openPointsShop() {
@@ -33,36 +33,33 @@ function openPointsShop() {
     gridSvip.appendChild(elSvip);
   });
 
-  // 渲染主题商店
   const themeGrid = $('#themeShopGrid'); themeGrid.innerHTML = '';
   
-  // ★ 判断购买时间：只在 12 月份开放购买
   const now = new Date();
-  const currentMonth = now.getMonth() + 1; // 获取当前月份（1-12）
+  const currentMonth = now.getMonth() + 1;
   const isSpringTime = (currentMonth === 12); 
   
-  const themesToSell = [...SHOP_THEMES, 'spring']; // 加入新春
+  const themesToSell = [...SHOP_THEMES, 'spring', 'flower', 'flower-plus', 'flower-max'];
 
   themesToSell.forEach(key => {
     const t = THEMES[key];
-    const isOwned = (status.level >= 2) || u.unlockedThemes.includes(key) || u.unlockedThemes.includes(key + '-plus');
+    // ★ 只要用户是 SVIP，这里就显示已拥有
+    const isOwned = (status.level >= 2) || u.unlockedThemes.includes(key) || u.unlockedThemes.includes(key + '-plus') || u.unlockedThemes.includes(key + '-max');
     
     const el = document.createElement('div');
     el.className = 'theme-shop-item' + (isOwned ? ' owned' : '');
     
     if (key === 'spring') {
-      // 新春专属逻辑
       if (isOwned) {
         el.innerHTML = `<div class="title">${t.name}</div><div class="price">✅ 已拥有</div>`;
       } else if (isSpringTime) {
         el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#e74c3c">🪙 1500 积分 (限时)</div>`;
         el.onclick = () => {
-          showConfirmModal('购买主题', `确认消耗 1500 积分解锁【新春主题】及【Plus版】吗？`, () => {
+          showConfirmModal('购买主题', `确认消耗 1500 积分解锁【${t.name}】及【Plus版】吗？`, () => {
             let upUsers = getUsersDB(); let upU = upUsers[currentUser];
             if (upU.points >= 1500) {
               upU.points -= 1500;
-              upU.unlockedThemes.push('spring');
-              upU.unlockedThemes.push('spring-plus');
+              upU.unlockedThemes.push('spring', 'spring-plus');
               store.set('bb-users', upUsers);
               showToast('购买成功！', '🎉');
               loadUserData(); openPointsShop();
@@ -71,11 +68,67 @@ function openPointsShop() {
         };
       } else {
         el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#999">仅限12月限时开启</div>`;
-        el.style.opacity = '0.6';
-        el.style.cursor = 'not-allowed';
+        el.style.opacity = '0.6'; el.style.cursor = 'not-allowed';
+      }
+    } else if (key === 'flower') {
+      if (status.level >= 1 || isOwned) {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price">✅ 已拥有</div>`;
+      } else {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#27ae60">🪙 免费领取</div>`;
+        el.onclick = () => {
+          let upUsers = getUsersDB(); let upU = upUsers[currentUser];
+          if (!upU.unlockedThemes.includes('flower')) upU.unlockedThemes.push('flower');
+          store.set('bb-users', upUsers);
+          showToast('已免费领取！', '🎉');
+          loadUserData(); openPointsShop();
+        };
+      }
+    } else if (key === 'flower-plus') {
+      // SVIP 直接拥有，普通校验前置
+      const hasFlower = u.unlockedThemes.includes('flower') || status.level >= 2 || u.unlockedThemes.includes('flower-plus');
+      if (isOwned) {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price">✅ 已拥有</div>`;
+      } else if (!hasFlower) {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#999">需先解锁普通版</div>`;
+        el.style.opacity = '0.6'; el.style.cursor = 'not-allowed';
+      } else {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#e74c3c">🪙 4500 积分</div>`;
+        el.onclick = () => {
+          showConfirmModal('购买主题', `确认消耗 4500 积分解锁【${t.name}】吗？`, () => {
+            let upUsers = getUsersDB(); let upU = upUsers[currentUser];
+            if (upU.points >= 4500) {
+              upU.points -= 4500;
+              upU.unlockedThemes.push('flower-plus');
+              store.set('bb-users', upUsers);
+              showToast('购买成功！', '🎉');
+              loadUserData(); openPointsShop();
+            } else showToast('积分不足', '❌');
+          }, false);
+        };
+      }
+    } else if (key === 'flower-max') {
+      const hasPlus = u.unlockedThemes.includes('flower-plus') || status.level >= 2 || u.unlockedThemes.includes('flower-max');
+      if (isOwned) {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price">✅ 已拥有</div>`;
+      } else if (!hasPlus) {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#999">需先解锁 Plus 版</div>`;
+        el.style.opacity = '0.6'; el.style.cursor = 'not-allowed';
+      } else {
+        el.innerHTML = `<div class="title">${t.name}</div><div class="price" style="color:#e74c3c">🪙 15000 积分</div>`;
+        el.onclick = () => {
+          showConfirmModal('购买主题', `确认消耗 15000 积分解锁【${t.name}】吗？`, () => {
+            let upUsers = getUsersDB(); let upU = upUsers[currentUser];
+            if (upU.points >= 15000) {
+              upU.points -= 15000;
+              upU.unlockedThemes.push('flower-max');
+              store.set('bb-users', upUsers);
+              showToast('购买成功！', '🎉');
+              loadUserData(); openPointsShop();
+            } else showToast('积分不足', '❌');
+          }, false);
+        };
       }
     } else {
-      // 普通主题逻辑
       el.innerHTML = `
         <div class="title">${t.name}</div>
         <div class="price">${isOwned ? '✅ 已拥有' : '🪙 1500 积分'}</div>

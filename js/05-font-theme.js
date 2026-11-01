@@ -144,8 +144,12 @@ function applyTheme() {
   if (theme === 'dark') body.classList.add('dark');
   
   if (currentTheme && currentTheme !== 'default') {
-    let baseTheme = currentTheme.replace('-plus', '');
-    body.classList.add('theme-' + baseTheme);
+    if (currentTheme === 'flower-max') {
+      body.classList.add('theme-flower-max'); // ★ 给 Max 单独分配类名
+    } else {
+      let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
+      body.classList.add('theme-' + baseTheme);
+    }
   }
   
   $('#btnTheme').textContent = theme === 'dark' ? '☀️' : '🌙';

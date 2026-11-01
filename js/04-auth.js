@@ -26,7 +26,6 @@ function getUsersDB() {
     if (typeof db[name].lastResetMonth !== 'string') db[name].lastResetMonth = '';
     if (!Array.isArray(db[name].unlockedThemes)) db[name].unlockedThemes = [];
     
-    // ★ 字体数据兼容：改为 customFonts 数组
     if (!Array.isArray(db[name].customFonts)) db[name].customFonts = [];
     if (typeof db[name].enFont !== 'string') db[name].enFont = 'default';
     if (typeof db[name].zhFont !== 'string') db[name].zhFont = 'default';
@@ -37,6 +36,10 @@ function getUsersDB() {
     if (typeof db[name].day30Sent !== 'boolean') db[name].day30Sent = false;
     if (typeof db[name].screenShake !== 'boolean') db[name].screenShake = true;
     if (typeof db[name].springSent !== 'boolean') db[name].springSent = false;
+    
+    // ★ 烟花参数默认值
+    if (typeof db[name].fwSpeed !== 'number') db[name].fwSpeed = 1.0;
+    if (typeof db[name].fwFreq !== 'number') db[name].fwFreq = 1.0;
   }
   return db;
 }
@@ -181,7 +184,7 @@ function loadUserData() {
 
     const tConf = THEMES[currentTheme];
     const isUnlocked = u.unlockedThemes.includes(currentTheme);
-    let baseTheme = currentTheme.replace('-plus', '');
+    let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
     if (THEMES[baseTheme] && THEMES[baseTheme].cost && !isUnlocked && status.level < 2) {
       currentTheme = 'default';
     } else if (THEMES[baseTheme] && THEMES[baseTheme].level > status.level && !isUnlocked) {
@@ -339,12 +342,19 @@ $('#btnThemeSelect').onclick = () => {
   const users = getUsersDB(); const u = users[currentUser]; const status = checkVipStatus(u);
   
   const grid = $('#themeGrid'); grid.innerHTML = '';
+  
   Object.entries(THEMES).forEach(([key, t]) => {
-    let baseTheme = key.replace('-plus', '');
+    let baseTheme = key.replace('-plus', '').replace('-max', '');
     let baseConf = THEMES[baseTheme];
-    if (baseConf.level <= status.level || baseConf.cost || t.isSpring) {
+    
+    // 判断是否解锁
+    let isUnlocked = false;
+    if (key === 'flower-plus') isUnlocked = (status.level >= 2) || u.unlockedThemes.includes('flower-plus') || u.unlockedThemes.includes('flower-max');
+    else if (key === 'flower-max') isUnlocked = (status.level >= 2) || u.unlockedThemes.includes('flower-max');
+    else isUnlocked = (status.level >= 2) || (!t.cost && !t.isSpring) || u.unlockedThemes.includes(key) || u.unlockedThemes.includes(baseTheme);
+
+    if (baseConf.level <= status.level || t.cost || t.isSpring) {
       const b = document.createElement('button');
-      const isUnlocked = (status.level >= 2) || (!baseConf.cost && !t.isSpring) || u.unlockedThemes.includes(key) || u.unlockedThemes.includes(baseTheme);
       b.className = 'theme-btn' + (currentTheme === key ? ' active' : '') + (isUnlocked ? '' : ' locked');
       b.textContent = t.name;
       b.onclick = () => {
@@ -358,8 +368,49 @@ $('#btnThemeSelect').onclick = () => {
       grid.appendChild(b);
     }
   });
+
+  // ★ 初始化输入框状态并决定是否显示设置面板
+  const isFwTheme = currentTheme.includes('plus') || currentTheme.includes('max') || currentTheme === 'spring';
+  const configArea = $('#fwConfigArea');
+  if (isFwTheme && u.unlockedThemes.length >= 0) {
+    configArea.style.display = 'block';
+    // 注意这里改成了 Input
+    if ($('#fwSpeedInput')) $('#fwSpeedInput').value = u.fwSpeed.toFixed(1);
+    if ($('#fwFreqInput')) $('#fwFreqInput').value = u.fwFreq.toFixed(1);
+  } else {
+    configArea.style.display = 'none';
+  }
+
   openOverlay($('#themeOverlay'));
 };
+
+// ★ 输入框失去焦点(或按回车)时保存与校验
+document.addEventListener('change', (e) => {
+  if (!currentUser) return;
+  
+  if (e.target.id === 'fwSpeedInput' || e.target.id === 'fwFreqInput') {
+    let users = getUsersDB();
+    let u = users[currentUser];
+    
+    let val = parseFloat(e.target.value);
+    
+    // 防呆校验：防止输入字母、负数或夸张的数值把电脑卡死
+    if (isNaN(val)) val = 1.0;
+    val = Math.max(0.1, Math.min(5.0, val));
+    
+    e.target.value = val.toFixed(1); // 修正输入框显示，保留一位小数
+
+    if (e.target.id === 'fwSpeedInput') {
+      u.fwSpeed = val;
+    } else {
+      u.fwFreq = val;
+    }
+    
+    store.set('bb-users', users);
+    showToast('烟花参数已更新', '⚙️');
+  }
+});
+
 $('#btnThemeClose').onclick = () => closeOverlay($('#themeOverlay'));
 
 // ★ 打开字体中心
@@ -368,7 +419,7 @@ $('#btnFontSelect').onclick = () => {
   $('#enFontSearch').value = '';
   $('#zhFontSearch').value = '';
   renderFontLists();
-  if ($('#enFontPreview')) updatePreviewBoxes(); // 加个安全判断
+  if ($('#enFontPreview')) updatePreviewBoxes(); 
   openOverlay($('#fontOverlay'));
 };
 $('#btnFontClose').onclick = () => closeOverlay($('#fontOverlay'));
@@ -416,6 +467,10 @@ $('#btnUserClose').onclick = () => closeOverlay($('#userOverlay'));
 $('#btnLogout').onclick = () => {
   currentUser = null; store.set('bb-current-user', null);
   if (typeof closeDevPanel === 'function') closeDevPanel();
+  
+  window.isDevMode = false;
+  window.isAutoRainEnabled = false;
+
   closeOverlay($('#userOverlay')); loadUserData();
 };
 $('#btnChangePwd').onclick = () => { $('#oldPwd').value = ''; $('#newPwd').value = ''; openOverlay($('#pwdOverlay')); };

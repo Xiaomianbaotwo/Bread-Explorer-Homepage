@@ -45,6 +45,34 @@ body.dark.theme-forest { --bg1: #0d1b11; --bg2: #051008; --bg3: #000000; --ink: 
 body.theme-ocean { --bg1: #e0f2f1; --bg2: #b2dfdb; --bg3: #009688; --glow-1: rgba(0,150,136,0.3); --glow-2: rgba(0,188,212,0.2); --ink: #004d40; --ink-soft: #00695c; --accent: #009688; }
 body.dark.theme-ocean { --bg1: #0a192f; --bg2: #020c1b; --bg3: #000000; --ink: #64ffda; --ink-soft: #00b4d8; --accent: #64ffda; }
 
+/* ★ 花语秘境 普通版/Plus版专属配色 (偏亮、偏粉) */
+body.theme-flower { 
+  --bg1: #fff0f3; --bg2: #ffaec9; --bg3: #d81b60; 
+  --glow-1: rgba(233, 30, 99, 0.3); --glow-2: rgba(156, 39, 176, 0.2); 
+  --ink: #4a0024; --ink-soft: #880e4f; 
+  --accent: #e91e63; 
+}
+body.dark.theme-flower { 
+  --bg1: #2b0b19; --bg2: #15040d; --bg3: #080005; 
+  --ink: #ffd1dc; --ink-soft: #ff8fb3; 
+  --accent: #ff4081;
+  --glow-1: rgba(255, 64, 129, 0.15); --glow-2: rgba(156, 39, 176, 0.1);
+}
+
+/* ★ 花语秘境 Max 专属配色 (极深紫红，花魁级压迫感) */
+body.theme-flower-max { 
+  --bg1: #fce4ec; --bg2: #f06292; --bg3: #880e4f; 
+  --glow-1: rgba(233, 30, 99, 0.4); --glow-2: rgba(103, 58, 183, 0.3); 
+  --ink: #3e001d; --ink-soft: #6a1b9a; 
+  --accent: #d81b60; 
+}
+body.dark.theme-flower-max { 
+  --bg1: #3a001a; --bg2: #1c000d; --bg3: #000000; 
+  --ink: #ff80ab; --ink-soft: #ea80fc; 
+  --accent: #ff1744;
+  --glow-1: rgba(255, 23, 68, 0.25); --glow-2: rgba(213, 0, 249, 0.2);
+}
+
 /* ★ 新春主题专属配色 */
 body.theme-spring { 
   --bg1: #e53935; --bg2: #c62828; --bg3: #b71c1c; 
