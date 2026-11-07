@@ -27,7 +27,6 @@ const BUILTIN_ZH_FONTS = [
   { id: 'mono', name: '等宽字体' },
   { id: 'local-zh-1', name: '📁 杨任东竹石体' },
   { id: 'local-zh-2', name: '📁 字魂告白情书体' },
-  { id: 'local-zh-3', name: '📁 字魂焦绿猫体' },
   { id: 'local-zh-4', name: '📁 字魂开心消消乐体' },
   { id: 'local-zh-5', name: '📁 字魂甜豆体' },
   { id: 'local-zh-6', name: '📁 字魂夏日诗歌体' },
@@ -66,7 +65,6 @@ function getFontFamily(id, u, type = '') {
     
     if (id === 'local-zh-1') return "'YangRenDong'";
     if (id === 'local-zh-2') return "'ZiHunGaoBai'";
-    if (id === 'local-zh-3') return "'ZiHunJiaoLvMao'";
     if (id === 'local-zh-4') return "'ZiHunXiaoXiaoLe'";
     if (id === 'local-zh-5') return "'ZiHunTianDou'";
     if (id === 'local-zh-6') return "'ZiHunXiaRi'";

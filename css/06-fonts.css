@@ -8,10 +8,9 @@
 @font-face { font-family: 'DancingScript'; src: url('../assets/fonts/DancingScript-Regular.ttf') format('truetype'); }
 @font-face { font-family: 'DancingScriptBold'; src: url('../assets/fonts/DancingScript-Bold.ttf') format('truetype'); }
 
-/* 中文部分（13个，严格按照文件名） */
+/* 中文部分（12个，已移除字魂焦绿猫体） */
 @font-face { font-family: 'YangRenDong'; src: url('../assets/fonts/杨任东竹石体-Bold.ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunGaoBai'; src: url('../assets/fonts/字魂告白情书体(商用需授权).ttf') format('truetype'); }
-@font-face { font-family: 'ZiHunJiaoLvMao'; src: url('../assets/fonts/字魂焦绿猫体.ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunXiaoXiaoLe'; src: url('../assets/fonts/字魂开心消消乐体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunTianDou'; src: url('../assets/fonts/字魂甜豆体(商用需授权).ttf') format('truetype'); }
 @font-face { font-family: 'ZiHunXiaRi'; src: url('../assets/fonts/字魂夏日诗歌体(商用需授权).ttf') format('truetype'); }
