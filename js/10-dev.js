@@ -1,17 +1,18 @@
 /* =========================================================
    10-dev.js
-   开发者模式：快捷键唤醒、修改数据、生成/管理兑换码、测试红包雨
+   开发者模式：云端强校验唤醒、修改数据、生成/管理兑换码、测试红包雨
    ========================================================= */
 
-let devKeys = '';
 window.isDevMode = false; 
-window.isAutoRainEnabled = false; // ★ 自动领取开关状态
+window.isAutoRainEnabled = false; 
+
+// ★ 你的专属金库身份证（已填好，记得确认是不是最新后台的）
+const DEV_UUID = '68be6e83-3e22-44f9-aeb3-c3541ed2e8f1';
 
 function closeDevPanel() {
   window.isDevMode = false;
-  window.isAutoRainEnabled = false; // ★ 核心修复：关闭面板时强制关闭自动领取
+  window.isAutoRainEnabled = false; 
   
-  // 恢复按钮的默认样式和文字
   const btn = $('#btnDevAutoRain');
   if (btn) {
     btn.style.color = '#9b59b6';
@@ -21,29 +22,47 @@ function closeDevPanel() {
 
   $('#devPanel').classList.remove('show');
 }
-document.addEventListener('keydown', (e) => {
+
+// ★ 核心：按 K 键时，强制向云端请求比对 UUID
+document.addEventListener('keydown', async (e) => {
   if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
 
-  if (currentUser === '小面包吖two' && e.key.toLowerCase() === 'k') {
-    window.isDevMode = !window.isDevMode;
-    $('#devPanel').classList.toggle('show', window.isDevMode);
-    showToast(window.isDevMode ? '开发者模式已开启' : '开发者模式已关闭', '🛠️');
-    return;
-  }
+  if (currentUser && e.key.toLowerCase() === 'k') {
+    
+    // 如果已经开启了，按 K 直接关闭
+    if (window.isDevMode) {
+      window.isDevMode = false;
+      $('#devPanel').classList.remove('show');
+      showToast('开发者模式已关闭', '🔒');
+      return;
+    }
 
-  devKeys += e.key.toLowerCase();
-  if (devKeys.length > 20) devKeys = devKeys.slice(-20);
+    // 向官方金库请求真实身份
+    try {
+      showToast('正在向云端验证开发者身份...', '⏳');
+      
+      const { data: { user }, error } = await sb.auth.getUser();
 
-  if (devKeys.endsWith('wwssaadd20121022')) {
-    devKeys = '';
-    if (!window.isDevMode) {
-      window.isDevMode = true;
-      $('#devPanel').classList.add('show');
-      showToast('开发者模式已开启', '🛠️');
+      if (error || !user) {
+        return showToast('验证失败：未登录或凭证已过期', '❌');
+      }
+
+      // 官方返回了真实的 user.id，和我们硬编码的管理员 UUID 进行比对
+      if (user.id === DEV_UUID) {
+        window.isDevMode = true;
+        $('#devPanel').classList.add('show');
+        showToast('身份验证通过，欢迎回来，主理人！', '👑');
+      } else {
+        showToast('拒绝访问：您没有管理员权限', '🚫');
+      }
+      
+    } catch (err) {
+      showToast('身份验证请求失败，请检查网络', '❌');
     }
   }
 });
 
+// 下面是你原来的面板按钮绑定，完全保持不变
 $('#btnDevClose').onclick = () => {
   closeDevPanel();
   showToast('开发者模式已关闭', '🔒');
@@ -60,7 +79,6 @@ $('#btnDevStartRain').onclick = () => {
   }
 };
 
-//自动领取红包开关
 $('#btnDevAutoRain').onclick = () => {
   window.isAutoRainEnabled = !window.isAutoRainEnabled;
   const btn = $('#btnDevAutoRain');

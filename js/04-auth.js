@@ -1,8 +1,13 @@
 /* =========================================================
    04-auth.js
+   官方 Auth 纯净版 (无免密，全走标准密码验证)
    ========================================================= */
 
-function hashPwd(pwd) { return btoa(encodeURIComponent(pwd)); }
+function getSafeEmailPrefix(name) {
+    if (/^[a-zA-Z0-9]+$/.test(name)) return name.toLowerCase();
+    return encodeURIComponent(name).replace(/%/g, '').toLowerCase();
+}
+
 function generateKey() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   let key = 'bread-key-';
@@ -37,7 +42,6 @@ function getUsersDB() {
     if (typeof db[name].screenShake !== 'boolean') db[name].screenShake = true;
     if (typeof db[name].springSent !== 'boolean') db[name].springSent = false;
     
-    // ★ 烟花参数默认值
     if (typeof db[name].fwSpeed !== 'number') db[name].fwSpeed = 1.0;
     if (typeof db[name].fwFreq !== 'number') db[name].fwFreq = 1.0;
   }
@@ -63,6 +67,7 @@ function renderQuickLogin() {
   if (list.length === 0) { area.style.display = 'none'; return; }
   area.style.display = 'block';
   listEl.innerHTML = '';
+  
   list.forEach(name => {
     const u = users[name];
     const btn = document.createElement('div');
@@ -79,11 +84,40 @@ function renderQuickLogin() {
     delBtn.style = "margin-left:4px; font-size:10px; color:#e74c3c; opacity:0.6; cursor:pointer;";
     delBtn.onclick = (e) => { e.stopPropagation(); removeUserFromQuickList(name); };
     btn.appendChild(delBtn);
-    btn.onclick = () => {
-      currentUser = name; store.set('bb-current-user', name);
-      closeOverlay($('#loginOverlay')); loadUserData(); showToast('欢迎回来', '🍞');
-      if (typeof checkRedPacketTime === 'function') checkRedPacketTime();
-      $('#authName').value = ''; $('#authPwd').value = '';
+    
+    btn.onclick = async () => {
+      showToast('正在验证云端身份...', '⏳');
+      try {
+        const { data: { user }, error } = await sb.auth.getUser();
+
+        if (error || !user) {
+          showToast('该账号已失效或被注销，请重新输入密码', '❌');
+          removeUserFromQuickList(name);
+          if (currentUser === name) {
+             currentUser = null;
+             store.set('bb-current-user', null);
+          }
+          let usersDB = getUsersDB();
+          if (usersDB[name]) {
+             delete usersDB[name];
+             store.set('bb-users', usersDB);
+          }
+          loadUserData(); 
+          return;
+        }
+
+        currentUser = name; 
+        store.set('bb-current-user', name);
+        closeOverlay($('#loginOverlay')); 
+        loadUserData(); 
+        showToast('欢迎回来', '🍞');
+        if (typeof checkRedPacketTime === 'function') checkRedPacketTime();
+        if (typeof syncFromCloud === 'function') syncFromCloud();
+        $('#authName').value = ''; $('#authPwd').value = '';
+
+      } catch (e) {
+        showToast('网络异常，无法验证身份', '❌');
+      }
     };
     listEl.appendChild(btn);
   });
@@ -336,18 +370,14 @@ $('#btnUser').onclick = () => {
   openOverlay($('#userOverlay'));
 };
 
-// ★ 打开主题中心
 $('#btnThemeSelect').onclick = () => {
   if (!currentUser) return showToast('请先登录', '🔒');
   const users = getUsersDB(); const u = users[currentUser]; const status = checkVipStatus(u);
-  
   const grid = $('#themeGrid'); grid.innerHTML = '';
   
   Object.entries(THEMES).forEach(([key, t]) => {
     let baseTheme = key.replace('-plus', '').replace('-max', '');
     let baseConf = THEMES[baseTheme];
-    
-    // 判断是否解锁
     let isUnlocked = false;
     if (key === 'flower-plus') isUnlocked = (status.level >= 2) || u.unlockedThemes.includes('flower-plus') || u.unlockedThemes.includes('flower-max');
     else if (key === 'flower-max') isUnlocked = (status.level >= 2) || u.unlockedThemes.includes('flower-max');
@@ -369,43 +399,29 @@ $('#btnThemeSelect').onclick = () => {
     }
   });
 
-  // ★ 初始化输入框状态并决定是否显示设置面板
   const isFwTheme = currentTheme.includes('plus') || currentTheme.includes('max') || currentTheme === 'spring';
   const configArea = $('#fwConfigArea');
   if (isFwTheme && u.unlockedThemes.length >= 0) {
     configArea.style.display = 'block';
-    // 注意这里改成了 Input
     if ($('#fwSpeedInput')) $('#fwSpeedInput').value = u.fwSpeed.toFixed(1);
     if ($('#fwFreqInput')) $('#fwFreqInput').value = u.fwFreq.toFixed(1);
   } else {
     configArea.style.display = 'none';
   }
-
   openOverlay($('#themeOverlay'));
 };
 
-// ★ 输入框失去焦点(或按回车)时保存与校验
 document.addEventListener('change', (e) => {
   if (!currentUser) return;
-  
   if (e.target.id === 'fwSpeedInput' || e.target.id === 'fwFreqInput') {
     let users = getUsersDB();
     let u = users[currentUser];
-    
     let val = parseFloat(e.target.value);
-    
-    // 防呆校验：防止输入字母、负数或夸张的数值把电脑卡死
     if (isNaN(val)) val = 1.0;
     val = Math.max(0.1, Math.min(5.0, val));
-    
-    e.target.value = val.toFixed(1); // 修正输入框显示，保留一位小数
-
-    if (e.target.id === 'fwSpeedInput') {
-      u.fwSpeed = val;
-    } else {
-      u.fwFreq = val;
-    }
-    
+    e.target.value = val.toFixed(1);
+    if (e.target.id === 'fwSpeedInput') u.fwSpeed = val;
+    else u.fwFreq = val;
     store.set('bb-users', users);
     showToast('烟花参数已更新', '⚙️');
   }
@@ -413,7 +429,6 @@ document.addEventListener('change', (e) => {
 
 $('#btnThemeClose').onclick = () => closeOverlay($('#themeOverlay'));
 
-// ★ 打开字体中心
 $('#btnFontSelect').onclick = () => {
   if (!currentUser) return showToast('请先登录', '🔒');
   $('#enFontSearch').value = '';
@@ -432,28 +447,78 @@ document.addEventListener('change', (e) => {
   }
 });
 
-$('#btnAuthCancel').onclick = () => closeOverlay($('#loginOverlay'));
 let isReg = false;
-$('#tabLogin').onclick = () => { isReg = false; $('#tabLogin').classList.add('active'); $('#tabRegister').classList.remove('active'); $('#btnAuthSubmit').textContent = '登录'; $('#pwdLabel').childNodes[0].textContent = '密码 / 面包 Key'; };
-$('#tabRegister').onclick = () => { isReg = true; $('#tabRegister').classList.add('active'); $('#tabLogin').classList.remove('active'); $('#btnAuthSubmit').textContent = '注册'; $('#pwdLabel').childNodes[0].textContent = '设置密码'; };
 
-$('#btnAuthSubmit').onclick = () => {
-  const name = $('#authName').value.trim(); const pwd = $('#authPwd').value.trim();
-  if (!name || !pwd) return showToast('不能为空', '⚠️');
+$('#btnAuthCancel').onclick = () => closeOverlay($('#loginOverlay'));
+
+$('#tabLogin').onclick = () => { 
+  isReg = false;
+  $('#tabLogin').classList.add('active'); 
+  $('#tabRegister').classList.remove('active'); 
+  $('#normalInputArea').style.display = 'block';
+  $('#quickLoginArea').style.display = getSavedUsers().length > 0 ? 'block' : 'none';
+  $('#btnAuthSubmit').textContent = '登录'; 
+  $('#pwdLabel').childNodes[0].textContent = '密码 / 面包 Key'; 
+};
+
+$('#tabRegister').onclick = () => { 
+  isReg = true;
+  $('#tabRegister').classList.add('active'); 
+  $('#tabLogin').classList.remove('active'); 
+  $('#normalInputArea').style.display = 'block';
+  $('#quickLoginArea').style.display = 'none';
+  $('#btnAuthSubmit').textContent = '注册'; 
+  $('#pwdLabel').childNodes[0].textContent = '设置密码'; 
+};
+
+$('#btnAuthSubmit').onclick = async () => {
+  const name = $('#authName').value.trim(); 
+  const pwd = $('#authPwd').value.trim();
+  if (!name || !pwd) return showToast('账号或密码不能为空', '⚠️');
+  
   let users = getUsersDB();
+  const fakeEmail = `${getSafeEmailPrefix(name)}@bread.com`;
+
   if (isReg) {
-    if (users[name]) return showToast('用户名已存在', '❌');
+    if (users[name]) return showToast('该用户名已存在', '❌');
+    showToast('正在向官方金库注册...', '⏳');
+
+    const { data, error } = await sb.auth.signUp({ email: fakeEmail, password: pwd });
+    if (error) return showToast('注册失败: ' + error.message, '❌');
+
+    const uid = data.user.id;
     const key = generateKey();
-    users[name] = { pwd: hashPwd(pwd), key, regTime: Date.now(), avatar: '', vipLevel: 0, vipExpire: 0, currentTheme: 'default', emails: [], screenShake: true, customFonts: [] };
-    store.set('bb-users', users); currentUser = name; store.set('bb-current-user', name);
-    saveUserToQuickList(name); closeOverlay($('#loginOverlay')); loadUserData();
-    $('#regSuccessKey').textContent = key; openOverlay($('#registerSuccessOverlay'));
+
+    users[name] = { 
+      email: fakeEmail, user_id: uid, key: key, regTime: Date.now(), 
+      vipType: 'none', vipLevel: 0, currentTheme: 'default', emails: [] 
+    };
+    
+    currentUser = name; 
+    store.set('bb-current-user', name);
+    
+    showToast('正在同步您的专属档案...', '⏳');
+    await store.set('bb-users', users); 
+    
+    saveUserToQuickList(name); 
+    closeOverlay($('#loginOverlay')); 
+    loadUserData();
+    $('#regSuccessKey').textContent = key; 
+    openOverlay($('#registerSuccessOverlay'));
+
   } else {
-    if (users[name] && (users[name].pwd === hashPwd(pwd) || users[name].key === pwd)) {
-      currentUser = name; store.set('bb-current-user', name); saveUserToQuickList(name); 
-      closeOverlay($('#loginOverlay')); loadUserData(); showToast('欢迎回来', '🍞');
-      if (typeof checkRedPacketTime === 'function') checkRedPacketTime();
-    } else showToast('账号或密码错误', '❌');
+    showToast('正在通过官方金库验证...', '⏳');
+    const { data, error } = await sb.auth.signInWithPassword({ email: fakeEmail, password: pwd });
+    if (error) return showToast('账号或密码错误', '❌');
+
+    currentUser = name; 
+    store.set('bb-current-user', name); 
+    saveUserToQuickList(name); 
+    closeOverlay($('#loginOverlay')); 
+    
+    showToast('欢迎回来', '🍞');
+    if (typeof checkRedPacketTime === 'function') checkRedPacketTime();
+    if (typeof syncFromCloud === 'function') syncFromCloud();
   }
 };
 
@@ -464,13 +529,12 @@ $('#regSuccessKey').onclick = () => {
 $('#btnRegSuccessClose').onclick = () => closeOverlay($('#registerSuccessOverlay'));
 
 $('#btnUserClose').onclick = () => closeOverlay($('#userOverlay'));
-$('#btnLogout').onclick = () => {
+$('#btnLogout').onclick = async () => {
+  await sb.auth.signOut();
   currentUser = null; store.set('bb-current-user', null);
   if (typeof closeDevPanel === 'function') closeDevPanel();
-  
   window.isDevMode = false;
   window.isAutoRainEnabled = false;
-
   closeOverlay($('#userOverlay')); loadUserData();
 };
 $('#btnChangePwd').onclick = () => { $('#oldPwd').value = ''; $('#newPwd').value = ''; openOverlay($('#pwdOverlay')); };
@@ -483,19 +547,26 @@ $('#btnDeleteConfirm').onclick = () => {
   localStorage.removeItem(`bb-sites_${currentUser}`); localStorage.removeItem(`bb-history_${currentUser}`);
   removeUserFromQuickList(currentUser); currentUser = null; store.set('bb-current-user', null);
   if (typeof closeDevPanel === 'function') closeDevPanel();
-  closeOverlay($('#deleteConfirmOverlay')); closeOverlay($('#userOverlay')); loadUserData();
-  showToast('账号已注销', '🧹');
+  closeOverlay($('#deleteConfirmOverlay')); closeOverlay($('#userOverlay'));
+  showToast('账号已注销，正在同步云端...', '🧹');
+  setTimeout(() => { loadUserData(); showToast('云端同步完成', '☁️'); }, 1500);
 };
 
 $('#btnPwdCancel').onclick = () => closeOverlay($('#pwdOverlay'));
-$('#btnPwdSave').onclick = () => {
+$('#btnPwdSave').onclick = async () => {
   const oldV = $('#oldPwd').value.trim(); const newV = $('#newPwd').value.trim();
   if (!oldV || !newV) return showToast('请填完整', '⚠️');
-  let users = getUsersDB(); let u = users[currentUser];
-  if (u.pwd === hashPwd(oldV) || u.key === oldV) {
-    u.pwd = hashPwd(newV); store.set('bb-users', users);
-    closeOverlay($('#pwdOverlay')); showToast('密码修改成功', '🔐');
-  } else showToast('原密码错误', '❌');
+  if (newV.length < 8) return showToast('密码长度至少8位', '⚠️');
+  
+  showToast('正在向官方金库更新密码...', '⏳');
+  const { data, error } = await sb.auth.updateUser({ password: newV });
+  
+  if (error) {
+    showToast('密码修改失败: ' + error.message, '❌');
+  } else {
+    closeOverlay($('#pwdOverlay')); 
+    showToast('密码修改成功', '🔐');
+  }
 };
 
 $('#btnRedeemCancel').onclick = () => closeOverlay($('#redeemOverlay'));
@@ -505,20 +576,49 @@ $('#btnRedeemSubmit').onclick = () => {
 };
 
 $('#avatarWrap').onclick = () => { $('#avatarUpload').click(); };
-$('#avatarUpload').onchange = e => {
-  const f = e.target.files[0]; if (!f) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = new Image();
-    img.onload = () => {
-      const c = document.createElement('canvas'); const MAX = 128;
-      let w = img.width, h = img.height;
-      if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } } else { if (h > MAX) { w *= MAX / h; h = MAX; } }
-      c.width = w; c.height = h; c.getContext('2d').drawImage(img, 0, 0, w, h);
-      let users = getUsersDB(); users[currentUser].avatar = c.toDataURL('image/png');
-      store.set('bb-users', users); updateUserUI();
-      $('#userAvatar').src = c.toDataURL('image/png'); $('#userAvatar').style.display = 'block'; $('#userAvatarPlaceholder').style.display = 'none';
-      showToast('头像更新', '🖼️');
-    }; img.src = ev.target.result;
-  }; reader.readAsDataURL(f); e.target.value = '';
+$('#avatarUpload').onchange = async (e) => {
+  const f = e.target.files[0]; 
+  if (!f) return;
+  if (f.size > 2 * 1024 * 1024) return showToast('图片太大，请不要超过 2MB', '⚠️');
+
+  const fileExt = f.name.split('.').pop();
+  const userData = getUsersDB()[currentUser];
+  const safePrefix = userData && userData.user_id ? userData.user_id : 'user_' + Date.now();
+  const fileName = `${safePrefix}_${Date.now()}.${fileExt}`;
+
+  const formData = new FormData();
+  formData.append('file', f);
+
+  showToast('正在上传头像...', '⏳');
+
+  try {
+    const res = await fetch(`${SUPABASE_CONFIG.URL}/storage/v1/object/avatars/${fileName}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_CONFIG.KEY,
+        'Authorization': `Bearer ${SUPABASE_CONFIG.KEY}`
+      },
+      body: formData
+    });
+
+    if (!res.ok) throw new Error('上传失败');
+
+    const publicUrl = `${SUPABASE_CONFIG.URL}/storage/v1/object/public/avatars/${fileName}`;
+
+    let users = getUsersDB(); 
+    users[currentUser].avatar = publicUrl; 
+    store.set('bb-users', users); 
+
+    updateUserUI();
+    $('#userAvatar').src = publicUrl; 
+    $('#userAvatar').style.display = 'block'; 
+    $('#userAvatarPlaceholder').style.display = 'none';
+    
+    showToast('头像更新成功', '🖼️');
+  } catch (err) {
+    console.error(err);
+    showToast('头像上传失败，请检查网络或权限', '❌');
+  }
+  
+  e.target.value = '';
 };

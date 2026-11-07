@@ -1,6 +1,6 @@
 /* =========================================================
    11-init.js
-   时钟、每日一句、漂浮面包、启动应用
+   时钟、每日一句、启动连接遮罩、真实进度条、云端拉取
    ========================================================= */
 
 function tick() {
@@ -20,16 +20,7 @@ setInterval(tick, 1000); tick();
 
 (function initQuote() {
   const QUOTES = [
-    '面包会有的，牛奶也会有的。',
-    '每一个不曾起舞的日子，都是对生命的辜负。',
-    '生活明朗，万物可爱。',
-    '慢一点也没关系，只要在往前走。',
-    '今天也要好好吃饭呀 🍞',
-    '愿你所求皆如愿，所行化坦途。',
-    '心动不如行动，行动不如马上。',
-    '别慌，月亮也正在大海某处迷茫。',
-    '愿你眼里有光，心中有暖，脚下有路。',
-    '把日子过成自己喜欢的样子。'
+    '面包会有的，牛奶也会有的。', '每一个不曾起舞的日子，都是对生命的辜负。', '生活明朗，万物可爱。', '慢一点也没关系，只要在往前走。', '今天也要好好吃饭呀 🍞', '愿你所求皆如愿，所行化坦途。', '心动不如行动，行动不如马上。', '别慌，月亮也正在大海某处迷茫。', '愿你眼里有光，心中有暖，脚下有路。', '把日子过成自己喜欢的样子。'
   ];
   const q = $('#quote');
   if (q) q.textContent = '—— ' + QUOTES[Math.floor(Math.random() * QUOTES.length)];
@@ -63,7 +54,6 @@ function popBread(b, e) {
     else if (currentTheme === 'forest') c.style.background = '#00e676';
     else if (currentTheme === 'ocean') c.style.background = '#64ffda';
     else c.style.background = '#e8933a';
-
     document.body.appendChild(c);
     const ang = Math.random() * Math.PI * 2, dist = 25 + Math.random() * 55;
     const tx = Math.cos(ang) * dist, ty = Math.sin(ang) * dist + 45;
@@ -72,8 +62,101 @@ function popBread(b, e) {
   b.remove(); setTimeout(spawnBread, 2500);
 }
 
-// ================= 初始化 =================
-loadUserData();
+// ================= 启动遮罩与云端拉取 =================
 
+function updateProgress(percent, text) {
+  const bar = document.getElementById('progressBar');
+  const txt = document.getElementById('loadingText');
+  if (bar) bar.style.width = percent + '%';
+  if (txt) txt.textContent = `${text} (${percent}%)`;
+}
+
+function enterApp() {
+  const overlay = document.getElementById('loadingOverlay');
+  if (overlay) {
+    overlay.style.opacity = '0';
+    setTimeout(() => { overlay.style.display = 'none'; }, 500);
+  }
+  loadUserData();
+}
+
+function showConnectError(msg) {
+  document.getElementById('loadingContent').style.display = 'none';
+  document.getElementById('errorContent').style.display = 'block';
+  document.getElementById('errorMsg').textContent = msg || '无法连接到云端，请检查网络。';
+}
+
+document.getElementById('btnLocalMode').onclick = () => { enterApp(); };
+document.getElementById('btnRetryCloud').onclick = () => {
+  document.getElementById('loadingContent').style.display = 'flex';
+  document.getElementById('errorContent').style.display = 'none';
+  syncFromCloud();
+};
+
+async function syncFromCloud() {
+  const curUser = localStorage.getItem('bb-current-user') ? JSON.parse(localStorage.getItem('bb-current-user')) : null;
+  
+  if (!curUser) {
+    updateProgress(100, '本地模式加载完毕');
+    setTimeout(enterApp, 500);
+    return;
+  }
+
+  try {
+    updateProgress(15, '正在向云端强校验身份');
+    const { data: { user }, error } = await sb.auth.getUser();
+
+    if (error || !user) {
+      localStorage.removeItem('bb-current-user');
+      currentUser = null; 
+      showConnectError('账号已失效或被管理员注销，请重新登录。');
+      document.getElementById('btnLocalMode').style.display = 'none';
+      return; 
+    }
+
+    const uid = user.id;
+
+    updateProgress(35, '身份校验通过，正在读取资产');
+    const resAssets = await sb.from('bread_assets').select('*').eq('user_id', uid).maybeSingle();
+
+    updateProgress(60, '正在同步个性化设置');
+    const resPrefs = await sb.from('bread_preferences').select('*').eq('user_id', uid).maybeSingle();
+    
+    updateProgress(80, '正在同步基础资料');
+    const resUser = await sb.from('bread_users').select('*').eq('user_id', uid).maybeSingle();
+
+    if (resUser.error) throw new Error(resUser.error.message);
+
+    if (resUser.data) {
+      const u = resUser.data;
+      const a = resAssets.data || {};
+      const p = resPrefs.data || {};
+      const set = p.settings || {};
+
+      const assembledUser = {
+        email: u.email, user_id: u.user_id, key: u.bread_key, avatar: u.avatar || '', regTime: u.reg_time || Date.now(),
+        points: a.points || 0, vipType: a.vip_type || 'none', vipLevel: a.vip_level || 0, vipExpire: a.vip_expire || 0, unlockedThemes: a.unlocked_themes || [], emails: a.emails || [],
+        customSites: p.sites || [], customHistory: p.history || [], currentTheme: p.current_theme || 'default',
+        enFont: set.enFont || 'default', zhFont: set.zhFont || 'default', fwSpeed: set.fwSpeed || 1.0, fwFreq: set.fwFreq || 1.0, screenShake: set.screenShake !== false,
+        customFonts: set.customFonts || [], lastRpDate: set.lastRpDate || '', rpCount: set.rpCount || 0, day7Sent: set.day7Sent || false, day30Sent: set.day30Sent || false, springSent: set.springSent || false
+      };
+
+      let localUsers = store.get('bb-users', {});
+      localUsers[curUser] = { ...localUsers[curUser], ...assembledUser };
+      localStorage.setItem('bb-users', JSON.stringify(localUsers));
+    } else {
+      throw new Error('云端数据异常，找不到您的档案');
+    }
+
+    updateProgress(100, '连接成功');
+    setTimeout(enterApp, 800);
+
+  } catch (e) {
+    console.error('❌ 云端拉取失败', e);
+    showConnectError(e.message);
+  }
+}
+
+syncFromCloud();
 setTimeout(checkRedPacketTime, 2000);
 setInterval(checkRedPacketTime, 60 * 1000);
