@@ -1,6 +1,6 @@
 /* =========================================================
    10-dev.js
-   开发者模式：免密通行证、三端执行、强制 UUID 校验、极客暗号
+   开发者模式：免密通行证、三端执行、云端数据强改
    ========================================================= */
 
 window.isDevMode = false; 
@@ -18,7 +18,6 @@ function closeDevPanel() {
   $('#devPanel').classList.remove('show');
 }
 
-// ==================== 唤醒方式一：快捷键 K ====================
 document.addEventListener('keydown', async (e) => {
   if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
   if (currentUser && e.key.toLowerCase() === 'k') {
@@ -38,28 +37,23 @@ document.addEventListener('keydown', async (e) => {
   }
 });
 
-// ==================== 唤醒方式二：搜索框极客暗号 ====================
-// 监听搜索框的按键，如果输入的是面包 Key 且属于 DEV_UUID，直接开后门
 document.addEventListener('DOMContentLoaded', () => {
   const searchInput = $('#searchInput');
   if (searchInput) {
     searchInput.addEventListener('keydown', async (e) => {
       if (e.key === 'Enter') {
         const val = searchInput.value.trim();
-        // 判断是不是标准的 key 格式 (bread-key-...)
         if (val.startsWith('bread-key-') && val.length === 42) {
-          e.preventDefault(); // 阻止正常的搜索跳转
-          
+          e.preventDefault();
           try {
             const { data: { user }, error } = await sb.auth.getUser();
             if (!error && user && user.id === DEV_UUID) {
               const users = getUsersDB();
-              // 验证这串暗号是不是当前登录管理员的面包 Key
               if (users[currentUser] && users[currentUser].key === val) {
                 window.isDevMode = true;
                 $('#devPanel').classList.add('show');
                 showToast('极客暗号验证通过，欢迎主理人！', '🕶️');
-                searchInput.value = ''; // 清空搜索框
+                searchInput.value = '';
                 return;
               }
             }
@@ -76,7 +70,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 $('#btnDevClose').onclick = () => { closeDevPanel(); showToast('开发者模式已关闭', '🔒'); };
 
-// ==================== 执行器核心逻辑 ====================
 let currentRunMode = 'js';
 
 function checkDevSecret(mode, callback) {
@@ -111,10 +104,7 @@ function checkDevSecret(mode, callback) {
                     if (!isNaN(count) && count > 0) {
                         const bypassDataStr = localStorage.getItem('bb-dev-bypass');
                         let bypass = bypassDataStr ? JSON.parse(bypassDataStr) : {};
-                        bypass[mode] = {
-                            count: count - 1, 
-                            expire: now + 24 * 60 * 60 * 1000 
-                        };
+                        bypass[mode] = { count: count - 1, expire: now + 24 * 60 * 60 * 1000 };
                         localStorage.setItem('bb-dev-bypass', JSON.stringify(bypass));
                         showToast(`已开启本机免密，剩余 ${count - 1} 次`, '🔓');
                     }
@@ -133,9 +123,7 @@ function openDevRunner(mode) {
     const jsArea = $('#jsCodeArea');
     const sqlArea = $('#sqlCodeArea');
     
-    if (!title || !jsArea || !sqlArea) {
-        return alert('页面缺少双端输入弹窗结构，请更新 index.html！');
-    }
+    if (!title || !jsArea || !sqlArea) return alert('页面缺少双端输入弹窗结构，请更新 index.html！');
     
     if (mode === 'js') title.textContent = '💻 执行自定义代码(前端)';
     else if (mode === 'sql') title.textContent = '📡 执行自定义代码(后端)';
@@ -152,7 +140,6 @@ function openDevRunner(mode) {
 $('#btnDevRunJs').onclick = () => checkDevSecret('js', () => openDevRunner('js'));
 $('#btnDevRunSql').onclick = () => checkDevSecret('sql', () => openDevRunner('sql'));
 $('#btnDevRunAll').onclick = () => checkDevSecret('all', () => openDevRunner('all'));
-
 $('#btnRunCodeCancel').onclick = () => closeOverlay($('#runCodeOverlay'));
 
 $('#btnRunCodeExecute').onclick = async () => {
@@ -207,62 +194,132 @@ $('#btnDevAutoRain').onclick = () => {
 };
 
 $('#btnDevAddDay').onclick = () => {
-  if (!currentUser) return;
-  showInputModal('增加注册时长', '输入增加天数', '10', (input) => {
-    let u = getUsersDB()[currentUser];
-    u.regTime -= parseInt(input) * 86400000;
-    store.set('bb-users', getUsersDB()); loadUserData();
+  if (!currentUser) return showToast('请先登录', '⚠️');
+  showInputModal('模拟增加注册时长', '请输入要增加的天数（如：10）', '10', async (input) => {
+    const days = parseInt(input, 10);
+    if (isNaN(days) || days <= 0) return showToast('请输入有效的天数', '❌');
+    
+    showToast('正在同步云端...', '⏳');
+    let users = getUsersDB(); let u = users[currentUser];
+    u.regTime -= days * 24 * 60 * 60 * 1000;
+    
+    const { error } = await sb.from('bread_users').update({ reg_time: u.regTime }).eq('user_id', u.user_id);
+    if (error) return showToast('同步失败', '❌');
+
+    store.set('bb-users', users);
+    loadUserData();
+    showToast(`已模拟增加 ${days} 天`, '🛠️');
   });
 };
 
 $('#btnDevSetDay').onclick = () => {
-  if (!currentUser) return;
-  showInputModal('设置注册时长', '输入天数', '30', (input) => {
-    let u = getUsersDB()[currentUser];
-    u.regTime = Date.now() - parseInt(input) * 86400000;
-    store.set('bb-users', getUsersDB()); loadUserData();
+  if (!currentUser) return showToast('请先登录', '⚠️');
+  showInputModal('模拟设置注册时长', '请输入要设置的天数（如：30）', '30', async (input) => {
+    const days = parseInt(input, 10);
+    if (isNaN(days) || days <= 0) return showToast('请输入有效的天数', '❌');
+    
+    showToast('正在同步云端...', '⏳');
+    let users = getUsersDB(); let u = users[currentUser];
+    u.regTime = Date.now() - days * 24 * 60 * 60 * 1000;
+    
+    const { error } = await sb.from('bread_users').update({ reg_time: u.regTime }).eq('user_id', u.user_id);
+    if (error) return showToast('同步失败', '❌');
+
+    store.set('bb-users', users);
+    loadUserData();
+    showToast(`注册时长设为 ${days} 天`, '🛠️');
   });
 };
 
 $('#btnDevSetPoints').onclick = () => {
-  if (!currentUser) return;
-  showInputModal('设置积分', '输入积分数', '10000', (input) => {
-    let u = getUsersDB()[currentUser];
-    u.points = parseInt(input);
-    store.set('bb-users', getUsersDB()); loadUserData();
+  if (!currentUser) return showToast('请先登录', '⚠️');
+  showInputModal('设置用户积分', '请输入要设置的积分数', '10000', async (input) => {
+    const pts = parseInt(input, 10);
+    if (isNaN(pts) || pts < 0) return showToast('请输入有效数字', '❌');
+    
+    showToast('正在同步云端...', '⏳');
+    let users = getUsersDB(); let u = users[currentUser];
+    const vLevel = u.vipType === 'svip' ? 2 : (u.vipType === 'vip' ? 1 : 0);
+    const vExpire = u.vipExpire || 0;
+
+    const { error } = await sb.rpc('dev_update_assets', {
+      p_points: pts, p_vip_level: vLevel, p_vip_expire: vExpire, p_admin_id: DEV_UUID
+    });
+    if (error) return showToast('云端修改失败: ' + error.message, '❌');
+
+    u.points = pts;
+    store.set('bb-users', users); 
+    loadUserData();
+    showToast(`积分已设为 ${pts} 并同步云端`, '🪙');
   });
 };
 
 function setDevVip(level) {
-  if (!currentUser) return;
-  let users = getUsersDB(); let u = users[currentUser];
+  if (!currentUser) return showToast('请先登录', '⚠️');
+  
   if (level === 0) {
-    u.vipLevel = 0; u.vipExpire = 0; u.vipType = 'none';
-    store.set('bb-users', users); loadUserData(); return showToast('已设为普通用户', '🔧');
+    showInputModal('设为普通用户', '确认清空所有 VIP 特权？输入任意字符确认', '确认', async (input) => {
+      showToast('正在同步云端...', '⏳');
+      let users = getUsersDB(); let u = users[currentUser];
+      
+      const { error } = await sb.rpc('dev_update_assets', {
+        p_points: u.points || 0, p_vip_level: 0, p_vip_expire: 0, p_admin_id: DEV_UUID
+      });
+      if (error) return showToast('云端修改失败: ' + error.message, '❌');
+
+      u.vipType = 'none'; u.vipExpire = 0;
+      store.set('bb-users', users); 
+      loadUserData();
+      showToast('已设为普通用户并同步云端', '🔧');
+    });
+    return;
   }
-  showInputModal(`设为 ${level === 1 ? 'VIP' : 'SVIP'}`, '天数(0为永久)', level === 1 ? '30' : '365', (input) => {
-    u.vipLevel = level; u.vipType = level === 2 ? 'svip' : 'vip';
-    u.vipExpire = input === '0' ? 0 : Date.now() + parseInt(input) * 86400000;
-    store.set('bb-users', users); loadUserData();
+  
+  showInputModal(`设为 ${level === 1 ? 'VIP' : 'SVIP'}`, '输入时长（天，0为永久）', level === 1 ? '30' : '365', async (input) => {
+    const days = parseInt(input, 10);
+    if (isNaN(days) || days < 0) return showToast('请输入有效的天数', '❌');
+    
+    showToast('正在同步云端...', '⏳');
+    let users = getUsersDB(); let u = users[currentUser];
+    const expireTime = days === 0 ? 0 : Date.now() + days * 24 * 60 * 60 * 1000;
+
+    const { error } = await sb.rpc('dev_update_assets', {
+      p_points: u.points || 0, p_vip_level: level, p_vip_expire: expireTime, p_admin_id: DEV_UUID
+    });
+    if (error) return showToast('云端修改失败: ' + error.message, '❌');
+
+    u.vipType = level === 2 ? 'svip' : 'vip';
+    u.vipExpire = expireTime;
+    store.set('bb-users', users); 
+    loadUserData();
+    showToast(`已设为 ${level === 1 ? 'VIP' : 'SVIP'} 并同步云端`, '🔧');
   });
 }
 
 $('#btnDevSetNone').onclick = () => setDevVip(0);
 $('#btnDevSetVip').onclick = () => setDevVip(1);
 $('#btnDevSetSvip').onclick = () => setDevVip(2);
+
 $('#btnDevSetForever').onclick = () => {
-  if (!currentUser) return;
-  let users = getUsersDB(); users[currentUser].vipLevel = 2; users[currentUser].vipExpire = 0; users[currentUser].vipType = 'svip';
-  store.set('bb-users', users); loadUserData(); showToast('已设为永久 SVIP', '🔧');
+  if (!currentUser) return showToast('请先登录', '⚠️');
+  showToast('正在同步云端...', '⏳');
+  let users = getUsersDB(); let u = users[currentUser];
+
+  sb.rpc('dev_update_assets', {
+    p_points: u.points || 0, p_vip_level: 2, p_vip_expire: 0, p_admin_id: DEV_UUID
+  }).then(({ error }) => {
+    if (error) return showToast('云端修改失败: ' + error.message, '❌');
+    u.vipType = 'svip'; u.vipExpire = 0;
+    store.set('bb-users', users); 
+    loadUserData();
+    showToast('已设为永久 SVIP 并同步云端', '🔧');
+  });
 };
 
 $('#btnDevManageCodes').onclick = () => { $('#codeManageInput').value = ''; openOverlay($('#codeManageOverlay')); };
+
 $('#btnDevGenCode').onclick = () => {
-  showInputModal(
-    '批量生成兑换码', 
-    '格式：类型,数值,数量。\n例如：SVIP,30,10（生成10个30天SVIP）\n例如：POINT,500,50（生成50个500积分）', 
-    'SVIP,30,10', 
-    async (input) => {
+  showInputModal('批量生成兑换码', '格式：类型,数值,数量。\n例如：SVIP,30,10', 'SVIP,30,10', async (input) => {
       const parts = input.split(',').map(s => s.trim());
       const type = (parts[0] || '').toLowerCase(); 
       const val = parseInt(parts[1], 10);
@@ -276,16 +333,12 @@ $('#btnDevGenCode').onclick = () => {
       showToast(`正在向云端申请生成 ${count} 个码...`, '⏳');
       
       const { data, error } = await sb.rpc('generate_redeem_code_v3', {
-        p_type: type,
-        p_value: val,
-        p_count: count,
-        p_admin_id: DEV_UUID
+        p_type: type, p_value: val, p_count: count, p_admin_id: DEV_UUID
       });
 
       if (error) return showToast('生成失败：' + error.message, '❌');
 
       const codeListText = data.join('\n');
-      
       if (navigator.clipboard) {
         navigator.clipboard.writeText(codeListText).then(() => {
           showToast(`成功生成 ${count} 个码，已复制到剪贴板`, '📋');
@@ -293,7 +346,6 @@ $('#btnDevGenCode').onclick = () => {
           showToast(`成功生成 ${count} 个码`, '🎉');
         });
       }
-
       showInputModal(`成功生成 ${count} 个（已复制全部）`, '10位乱序，有效期7天。', data[0], () => {});
     }
   );

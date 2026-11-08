@@ -1,6 +1,6 @@
 /* =========================================================
    04-auth.js
-   官方 Auth 纯净版 (已接入面包 Key 终极验证)
+   官方 Auth 纯净版 (彻底剥离 vipLevel，适配新主题)
    ========================================================= */
 
 function getSafeEmailPrefix(name) {
@@ -20,9 +20,12 @@ function getUsersDB() {
   if (!db || typeof db !== 'object' || Array.isArray(db)) db = {};
 
   for (let name in db) {
-    if (typeof db[name] === 'string') db[name] = { pwd: db[name], key: generateKey(), regTime: Date.now(), avatar: '', vipLevel: 0, vipExpire: 0, currentTheme: 'default', emails: [], lastPointDate: '' };
-    if (typeof db[name].vipLevel !== 'number') db[name].vipLevel = 0;
+    if (typeof db[name] === 'string') db[name] = { pwd: db[name], key: generateKey(), regTime: Date.now(), avatar: '', vipType: 'none', vipExpire: 0, currentTheme: 'default', emails: [], lastPointDate: '' };
+    
+    // ★ 移除 vipLevel 校验
+    if (typeof db[name].vipType !== 'string') db[name].vipType = 'none';
     if (typeof db[name].vipExpire !== 'number') db[name].vipExpire = 0;
+    
     if (typeof db[name].currentTheme !== 'string') db[name].currentTheme = 'default';
     if (!Array.isArray(db[name].emails)) db[name].emails = [];
     if (typeof db[name].regTime !== 'number' || !db[name].regTime) db[name].regTime = Date.now();
@@ -30,20 +33,18 @@ function getUsersDB() {
     if (typeof db[name].points !== 'number') db[name].points = 0;
     if (typeof db[name].lastResetMonth !== 'string') db[name].lastResetMonth = '';
     if (!Array.isArray(db[name].unlockedThemes)) db[name].unlockedThemes = [];
-    
     if (!Array.isArray(db[name].customFonts)) db[name].customFonts = [];
     if (typeof db[name].enFont !== 'string') db[name].enFont = 'default';
     if (typeof db[name].zhFont !== 'string') db[name].zhFont = 'default';
-    
     if (typeof db[name].lastRpDate !== 'string') db[name].lastRpDate = '';
     if (typeof db[name].rpCount !== 'number') db[name].rpCount = 0;
     if (typeof db[name].day7Sent !== 'boolean') db[name].day7Sent = false;
     if (typeof db[name].day30Sent !== 'boolean') db[name].day30Sent = false;
     if (typeof db[name].screenShake !== 'boolean') db[name].screenShake = true;
     if (typeof db[name].springSent !== 'boolean') db[name].springSent = false;
-    
     if (typeof db[name].fwSpeed !== 'number') db[name].fwSpeed = 1.0;
     if (typeof db[name].fwFreq !== 'number') db[name].fwFreq = 1.0;
+    if (typeof db[name].fwThemeColor !== 'boolean') db[name].fwThemeColor = true; // ★ 适配颜色开关
   }
   return db;
 }
@@ -101,13 +102,14 @@ function markCodeUsed(code) {
   if (!used.includes(hashCode(code))) { used.push(hashCode(code)); store.set('bb-used-codes', used); }
 }
 
+// ★ 彻底去掉 level 判定，只看 type
 function checkVipStatus(userObj) {
-  if (!userObj) return { level: 0, expire: 0, type: 'none' };
+  if (!userObj) return { expire: 0, type: 'none' };
   let type = userObj.vipType || 'none';
-  let level = userObj.vipLevel || 0;
-  if (type === 'none' && level > 0) { type = level === 2 ? 'svip' : 'vip'; }
-  if (userObj.vipExpire !== 0 && Date.now() > userObj.vipExpire) { return { level: 0, expire: 0, type: 'none' }; }
-  return { level: level, expire: userObj.vipExpire, type: type };
+  if (userObj.vipExpire !== 0 && Date.now() > userObj.vipExpire) {
+      return { expire: 0, type: 'none' };
+  }
+  return { expire: userObj.vipExpire, type: type };
 }
 
 function checkSystemEmails(u) {
@@ -132,10 +134,10 @@ function loadUserData() {
   if (currentUser && users) {
     const u = users[currentUser];
     if (checkSystemEmails(u)) store.set('bb-users', users);
+    
     const status = checkVipStatus(u);
-    if (u.vipType !== status.type || u.vipLevel !== status.level) {
+    if (u.vipType !== status.type) {
         u.vipType = status.type;
-        u.vipLevel = status.level;
         u.vipExpire = status.expire;
         store.set('bb-users', users);
     }
@@ -150,8 +152,6 @@ function loadUserData() {
     const isUnlocked = u.unlockedThemes.includes(currentTheme);
     let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
     if (THEMES[baseTheme] && THEMES[baseTheme].cost && !isUnlocked && status.type !== 'svip') {
-      currentTheme = 'default';
-    } else if (THEMES[baseTheme] && THEMES[baseTheme].level > status.level && !isUnlocked) {
       currentTheme = 'default';
     }
     applyFont(u.enFont, u.zhFont, u);
@@ -236,7 +236,6 @@ async function doRedeem(code, fromMail = false) {
   }
 
   showToast('正在向云端核销...', '⏳');
-  
   const { data, error } = await sb.rpc('redeem_external_code_v3', { p_code: code });
 
   if (error) {
@@ -307,12 +306,10 @@ $('#btnThemeSelect').onclick = () => {
   Object.entries(THEMES).forEach(([key, t]) => {
     let baseTheme = key.replace('-plus', '').replace('-max', '');
     let baseConf = THEMES[baseTheme];
-    let isUnlocked = false;
-    if (key === 'flower-plus') isUnlocked = (status.type === 'svip') || u.unlockedThemes.includes('flower-plus') || u.unlockedThemes.includes('flower-max');
-    else if (key === 'flower-max') isUnlocked = (status.type === 'svip') || u.unlockedThemes.includes('flower-max');
-    else isUnlocked = (status.type === 'svip') || (!t.cost && !t.isSpring) || u.unlockedThemes.includes(key) || u.unlockedThemes.includes(baseTheme);
+    
+    let isUnlocked = (status.type === 'svip') || u.unlockedThemes.includes(key) || (!t.cost && !t.isSpring);
 
-    if (baseConf.level <= status.level || t.cost || t.isSpring) {
+    if (baseConf.level <= 0 || t.cost || t.isSpring || status.type === 'svip') {
       const b = document.createElement('button');
       b.className = 'theme-btn' + (currentTheme === key ? ' active' : '') + (isUnlocked ? '' : ' locked');
       b.textContent = t.name;
@@ -334,6 +331,8 @@ $('#btnThemeSelect').onclick = () => {
     configArea.style.display = 'block';
     if ($('#fwSpeedInput')) $('#fwSpeedInput').value = u.fwSpeed.toFixed(1);
     if ($('#fwFreqInput')) $('#fwFreqInput').value = u.fwFreq.toFixed(1);
+    // ★ 读取颜色适配开关
+    if ($('#fwThemeColorToggle')) $('#fwThemeColorToggle').checked = u.fwThemeColor !== false;
   } else {
     configArea.style.display = 'none';
   }
@@ -342,6 +341,7 @@ $('#btnThemeSelect').onclick = () => {
 
 document.addEventListener('change', (e) => {
   if (!currentUser) return;
+  
   if (e.target.id === 'fwSpeedInput' || e.target.id === 'fwFreqInput') {
     let users = getUsersDB();
     let u = users[currentUser];
@@ -353,6 +353,15 @@ document.addEventListener('change', (e) => {
     else u.fwFreq = val;
     store.set('bb-users', users);
     showToast('烟花参数已更新', '⚙️');
+  }
+
+  // ★ 监听颜色适配开关
+  if (e.target.id === 'fwThemeColorToggle') {
+    let users = getUsersDB();
+    let u = users[currentUser];
+    u.fwThemeColor = e.target.checked;
+    store.set('bb-users', users);
+    showToast(e.target.checked ? '烟花已适配主题颜色' : '烟花颜色已随机', '🎨');
   }
 });
 
@@ -410,7 +419,7 @@ $('#btnAuthSubmit').onclick = async () => {
   let users = getUsersDB();
   const fakeEmail = `${getSafeEmailPrefix(name)}@bread.com`;
 
-    if (isReg) {
+  if (isReg) {
     if (users[name]) return showToast('该用户名已存在', '❌');
     showToast('正在向官方金库注册...', '⏳');
 
@@ -422,7 +431,7 @@ $('#btnAuthSubmit').onclick = async () => {
 
     users[name] = { 
       email: fakeEmail, user_id: uid, key: key, regTime: Date.now(), 
-      vipType: 'none', vipLevel: 0, currentTheme: 'default', emails: [] 
+      vipType: 'none', vipExpire: 0, currentTheme: 'default', emails: [] 
     };
     
     currentUser = name; 
@@ -436,14 +445,10 @@ $('#btnAuthSubmit').onclick = async () => {
     saveUserToQuickList(name); 
     closeOverlay($('#loginOverlay')); 
     loadUserData();
-    
-    // ★ 核心修改：同时塞入 Key 和 UUID
     $('#regSuccessKey').textContent = key; 
-    $('#regSuccessUid').textContent = uid; 
     openOverlay($('#registerSuccessOverlay'));
 
   } else {
-    // 登录逻辑保持不变...
     showToast('正在通过官方金库验证...', '⏳');
     const { data, error } = await sb.auth.signInWithPassword({ email: fakeEmail, password: pwd });
     if (error) return showToast('账号或密码错误', '❌');
@@ -461,13 +466,7 @@ $('#btnAuthSubmit').onclick = async () => {
 
 $('#regSuccessKey').onclick = () => {
   const keyText = $('#regSuccessKey').textContent;
-  navigator.clipboard.writeText(keyText).then(() => { showToast('面包 Key 已复制', '📋'); }).catch(() => { showToast('复制失败，请手动选择', '⚠️'); });
-};
-
-// ★ 新增 UUID 点击复制
-$('#regSuccessUid').onclick = () => {
-  const uidText = $('#regSuccessUid').textContent;
-  navigator.clipboard.writeText(uidText).then(() => { showToast('UUID 已复制', '📋'); }).catch(() => { showToast('复制失败，请手动选择', '⚠️'); });
+  navigator.clipboard.writeText(keyText).then(() => { showToast('已复制到剪贴板', '📋'); }).catch(() => { showToast('复制失败，请手动选择复制', '⚠️'); });
 };
 $('#btnRegSuccessClose').onclick = () => closeOverlay($('#registerSuccessOverlay'));
 
@@ -486,13 +485,11 @@ $('#btnRedeemCode').onclick = () => { $('#redeemInput').value = ''; openOverlay(
 $('#btnDeleteAccount').onclick = () => { openOverlay($('#deleteConfirmOverlay')); };
 $('#btnDeleteCancel').onclick = () => closeOverlay($('#deleteConfirmOverlay'));
 
-// ★ 新增：注销账号时，必须输入面包 Key 才能核销
 $('#btnDeleteConfirm').onclick = () => {
   let users = getUsersDB(); let u = users[currentUser];
   showInputModal('核销账号', '此操作不可恢复！请输入您的面包 Key 以确认注销', '', (inputKey) => {
     if (inputKey !== u.key) return showToast('面包 Key 错误，已取消注销', '❌');
     
-    // 验证通过，开始删除
     delete users[currentUser]; store.set('bb-users', users);
     localStorage.removeItem(`bb-sites_${currentUser}`); localStorage.removeItem(`bb-history_${currentUser}`);
     removeUserFromQuickList(currentUser); currentUser = null; store.set('bb-current-user', null);
@@ -505,7 +502,6 @@ $('#btnDeleteConfirm').onclick = () => {
 
 $('#btnPwdCancel').onclick = () => closeOverlay($('#pwdOverlay'));
 
-// ★ 新增：修改密码时，原密码必须等于 面包 Key（忘密特赦令）
 $('#btnPwdSave').onclick = async () => {
   const oldV = $('#oldPwd').value.trim(); 
   const newV = $('#newPwd').value.trim();

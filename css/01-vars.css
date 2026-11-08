@@ -45,7 +45,7 @@ body.dark.theme-forest { --bg1: #0d1b11; --bg2: #051008; --bg3: #000000; --ink: 
 body.theme-ocean { --bg1: #e0f2f1; --bg2: #b2dfdb; --bg3: #009688; --glow-1: rgba(0,150,136,0.3); --glow-2: rgba(0,188,212,0.2); --ink: #004d40; --ink-soft: #00695c; --accent: #009688; }
 body.dark.theme-ocean { --bg1: #0a192f; --bg2: #020c1b; --bg3: #000000; --ink: #64ffda; --ink-soft: #00b4d8; --accent: #64ffda; }
 
-/* ★ 花语秘境 普通版/Plus版专属配色 (偏亮、偏粉) */
+/* ★ 花语秘境 共享配色 (普通版/Plus/Max 通用) */
 body.theme-flower { 
   --bg1: #fff0f3; --bg2: #ffaec9; --bg3: #d81b60; 
   --glow-1: rgba(233, 30, 99, 0.3); --glow-2: rgba(156, 39, 176, 0.2); 
@@ -57,20 +57,6 @@ body.dark.theme-flower {
   --ink: #ffd1dc; --ink-soft: #ff8fb3; 
   --accent: #ff4081;
   --glow-1: rgba(255, 64, 129, 0.15); --glow-2: rgba(156, 39, 176, 0.1);
-}
-
-/* ★ 花语秘境 Max 专属配色 (极深紫红，花魁级压迫感) */
-body.theme-flower-max { 
-  --bg1: #fce4ec; --bg2: #f06292; --bg3: #880e4f; 
-  --glow-1: rgba(233, 30, 99, 0.4); --glow-2: rgba(103, 58, 183, 0.3); 
-  --ink: #3e001d; --ink-soft: #6a1b9a; 
-  --accent: #d81b60; 
-}
-body.dark.theme-flower-max { 
-  --bg1: #3a001a; --bg2: #1c000d; --bg3: #000000; 
-  --ink: #ff80ab; --ink-soft: #ea80fc; 
-  --accent: #ff1744;
-  --glow-1: rgba(255, 23, 68, 0.25); --glow-2: rgba(213, 0, 249, 0.2);
 }
 
 /* ★ 新春主题专属配色 */
@@ -88,3 +74,11 @@ body.dark.theme-spring {
   --card: rgba(255, 255, 255, 0.08); --card-border: rgba(255, 215, 0, 0.3);
   --accent: #ffd700;
 }
+
+/* ★ 新增：美食天堂专属配色 */
+body.theme-food { --bg1: #fff4e6; --bg2: #ffd8a8; --bg3: #ff922b; --ink: #663300; --ink-soft: #995c00; --accent: #f76707; --glow-1: rgba(247,103,7,0.3); --glow-2: rgba(255,146,43,0.2); }
+body.dark.theme-food { --bg1: #331a00; --bg2: #1a0d00; --bg3: #000000; --ink: #ffd8a8; --ink-soft: #ffb066; --accent: #ff922b; }
+
+/* ★ 新增：水果圣地专属配色 */
+body.theme-fruit { --bg1: #f0fff4; --bg2: #c3fae8; --bg3: #38d9a9; --ink: #003329; --ink-soft: #00664a; --accent: #20c997; --glow-1: rgba(32,201,151,0.3); --glow-2: rgba(255,107,107,0.2); }
+body.dark.theme-fruit { --bg1: #002b22; --bg2: #001a14; --bg3: #000000; --ink: #c3fae8; --ink-soft: #63e6be; --accent: #38d9a9; }

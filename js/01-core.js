@@ -1,6 +1,6 @@
 /* =========================================================
    01-core.js
-   纯云端发码版 (彻底移除前端生成逻辑)
+   纯云端发码版 (彻底移除前端生成逻辑，剥离 vip_level)
    ========================================================= */
 
 const $ = s => document.querySelector(s);
@@ -49,11 +49,18 @@ const store = {
             username: currentUser, user_id: u.user_id, email: u.email, 
             bread_key: u.key, avatar: u.avatar || '', reg_time: u.regTime || Date.now() 
           }),
+          sb.from('bread_assets').upsert({ 
+            username: currentUser, user_id: u.user_id, points: u.points || 0, 
+            vip_type: u.vipType || 'none', 
+            // ★ 彻底移除了 vip_level
+            vip_expire: u.vipExpire || 0, unlocked_themes: u.unlockedThemes || [], 
+            emails: u.emails || [] 
+          }),
           sb.from('bread_preferences').upsert({ 
             username: currentUser, user_id: u.user_id, sites: u.sites || [], 
             history: u.history || [], current_theme: u.currentTheme || 'default', 
             settings: { 
-              enFont: u.enFont, zhFont: u.zhFont, fwSpeed: u.fwSpeed, fwFreq: u.fwFreq, 
+              enFont: u.enFont, zhFont: u.zhFont, fwSpeed: u.fwSpeed, fwFreq: u.fwFreq, fwThemeColor: u.fwThemeColor,
               screenShake: u.screenShake, customFonts: u.customFonts || [], 
               lastRpDate: u.lastRpDate || '', rpCount: u.rpCount || 0, 
               day7Sent: u.day7Sent || false, day30Sent: u.day30Sent || false, springSent: u.springSent || false,

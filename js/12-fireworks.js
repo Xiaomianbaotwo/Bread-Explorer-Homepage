@@ -1,6 +1,6 @@
 /* =========================================================
    12-fireworks.js
-   新春无敌版 + 花语秘境专属色系（支持速度/频率调节）
+   全主题专属色系（支持颜色适配开关）
    ========================================================= */
 
 const fwCanvas = document.createElement('canvas');
@@ -28,7 +28,6 @@ window.setFireworkLayer = function(isHigh) {
   fwCanvas.style.zIndex = isHigh ? '99999' : '0';
 };
 
-// ================= 烟花升空逻辑 =================
 class Firework {
   constructor(sx, sy, tx, ty, hue, isBg = false, type = 'normal') {
     this.x = sx; this.y = sy;
@@ -43,7 +42,6 @@ class Firework {
     }
     this.angle = Math.atan2(ty - sy, tx - sx);
     
-    // ★ 核心修改 1：读取用户设置的升空速度倍率
     let currentUsersDB = getUsersDB();
     let speedMult = (currentUser && currentUsersDB[currentUser] && currentUsersDB[currentUser].fwSpeed) ? currentUsersDB[currentUser].fwSpeed : 1.0;
     
@@ -113,7 +111,6 @@ class Firework {
   }
 }
 
-// ================= 爆炸粒子逻辑 =================
 class Particle {
   constructor(x, y, hue, type = 'normal') {
     this.x = x; this.y = y;
@@ -126,103 +123,46 @@ class Particle {
     if (type === 'willow') {
       coordinateCount = 15;
       speed = Math.random() * 4 + 2;
-      friction = 0.98; 
-      gravity = 0.12; 
-      decay = Math.random() * 0.005 + 0.005;
-      angle = Math.random() * Math.PI * 2;
-      this.hue = 325 + Math.random() * 15; // 偏向玫红色
+      friction = 0.98; gravity = 0.12; decay = Math.random() * 0.005 + 0.005; angle = Math.random() * Math.PI * 2;
+      this.hue = 325 + Math.random() * 15;
     } else if (type === 'firecracker') {
-      coordinateCount = 3;
-      speed = Math.random() * 20 + 10;
-      gravity = 0.5;
-      friction = 0.85;
-      decay = 0.06;
+      coordinateCount = 3; speed = Math.random() * 20 + 10; gravity = 0.5; friction = 0.85; decay = 0.06;
       angle = -Math.PI/2 + (Math.random() - 0.5) * 2.5; 
     } else if (type === 'koi') {
-      coordinateCount = 3;
-      speed = 2 + Math.random() * 2;
-      friction = 1;
-      gravity = 0;
-      decay = Math.random() * 0.01 + 0.01;
-      angle = Math.random() * Math.PI * 2;
+      coordinateCount = 3; speed = 2 + Math.random() * 2; friction = 1; gravity = 0; decay = Math.random() * 0.01 + 0.01; angle = Math.random() * Math.PI * 2;
       this.wave = Math.random() * Math.PI * 2; 
-    } 
-    else if (type === 'sakura-rain') {
-      coordinateCount = 12;
-      speed = Math.random() * 4 + 2;
-      friction = 0.96; 
-      gravity = 0.03;
-      decay = Math.random() * 0.003 + 0.003;
-      angle = Math.random() * Math.PI * 2;
-      this.hue = 335 + Math.random() * 15; // 固定深粉/品红交织
-      this.brightness = 85 + Math.random() * 15;
-    }
-    else if (type === 'bloom-burst-outer') {
-      coordinateCount = 4;
-      speed = Math.random() * 8 + 6;
-      friction = 0.92;
-      gravity = 0.08;
-      decay = 0.02;
-      angle = Math.random() * Math.PI * 2;
-      this.hue = 320 + Math.random() * 15; // 玫红/品红
-    }
-    else if (type === 'bloom-burst-inner') {
-      coordinateCount = 2;
-      speed = Math.random() * 15 + 15;
-      friction = 0.94;
-      gravity = 0.02;
-      decay = 0.015;
-      angle = Math.random() * Math.PI * 2;
-      this.hue = 340 + Math.random() * 15; // 亮粉红
-    }
-    else if (type === 'gold-spark') {
-      coordinateCount = 3;
-      speed = Math.random() * 4 + 2;
-      friction = 0.9;
-      gravity = 0.1;
-      decay = 0.04;
-      angle = Math.random() * Math.PI * 2;
-      this.hue = 320 + Math.random() * 20; // 偏玫红
-    }
-    else if (type === 'twin-stream') {
-      coordinateCount = 8;
-      speed = Math.random() * 12 + 10;
-      friction = 0.97;
-      gravity = 0.25;
-      decay = 0.01;
-    }
-    else {
-      speed = Math.random() * 12 + 3;
-      friction = 0.94;
-      gravity = 0.15;
-      decay = Math.random() * 0.015 + 0.015;
-      angle = Math.random() * Math.PI * 2;
+    } else if (type === 'sakura-rain') {
+      coordinateCount = 12; speed = Math.random() * 4 + 2; friction = 0.96; gravity = 0.03; decay = Math.random() * 0.003 + 0.003; angle = Math.random() * Math.PI * 2;
+      this.hue = 335 + Math.random() * 15; this.brightness = 85 + Math.random() * 15;
+    } else if (type === 'bloom-burst-outer') {
+      coordinateCount = 4; speed = Math.random() * 8 + 6; friction = 0.92; gravity = 0.08; decay = 0.02; angle = Math.random() * Math.PI * 2;
+      this.hue = 320 + Math.random() * 15;
+    } else if (type === 'bloom-burst-inner') {
+      coordinateCount = 2; speed = Math.random() * 15 + 15; friction = 0.94; gravity = 0.02; decay = 0.015; angle = Math.random() * Math.PI * 2;
+      this.hue = 340 + Math.random() * 15;
+    } else if (type === 'gold-spark') {
+      coordinateCount = 3; speed = Math.random() * 4 + 2; friction = 0.9; gravity = 0.1; decay = 0.04; angle = Math.random() * Math.PI * 2;
+      this.hue = 320 + Math.random() * 20;
+    } else if (type === 'twin-stream') {
+      coordinateCount = 8; speed = Math.random() * 12 + 10; friction = 0.97; gravity = 0.25; decay = 0.01;
+    } else {
+      speed = Math.random() * 12 + 3; friction = 0.94; gravity = 0.15; decay = Math.random() * 0.015 + 0.015; angle = Math.random() * Math.PI * 2;
     }
 
     this.coordinateCount = coordinateCount;
-    while (this.coordinateCount--) {
-      this.coordinates.push([this.x, this.y]);
-    }
+    while (this.coordinateCount--) { this.coordinates.push([this.x, this.y]); }
     
-    this.speed = speed;
-    this.friction = friction;
-    this.gravity = gravity;
-    this.decay = decay;
-    this.angle = angle;
+    this.speed = speed; this.friction = friction; this.gravity = gravity; this.decay = decay; this.angle = angle;
 
     if (type !== 'sakura-rain' && type !== 'bloom-burst-outer' && type !== 'bloom-burst-inner' && type !== 'willow' && type !== 'gold-spark') {
-      this.hue = hue + (Math.random() * 30 - 15); 
-      this.brightness = Math.random() * 30 + 70;
+      this.hue = hue + (Math.random() * 30 - 15); this.brightness = Math.random() * 30 + 70;
     }
     
-    this.alpha = 1;
-    this.isSpark = Math.random() > 0.8;
+    this.alpha = 1; this.isSpark = Math.random() > 0.8;
   }
   
   update(index) {
-    this.coordinates.pop();
-    this.coordinates.unshift([this.x, this.y]);
-    this.speed *= this.friction;
+    this.coordinates.pop(); this.coordinates.unshift([this.x, this.y]); this.speed *= this.friction;
     
     if (this.type === 'koi') {
       this.wave += 0.1;
@@ -234,9 +174,7 @@ class Particle {
     }
     
     this.alpha -= this.decay;
-    if (this.alpha <= this.decay) {
-      particles.splice(index, 1);
-    }
+    if (this.alpha <= this.decay) { particles.splice(index, 1); }
   }
   
   draw() {
@@ -245,22 +183,17 @@ class Particle {
     fwCtx.lineTo(this.x, this.y);
     
     if (this.isSpark && Math.random() > 0.6) {
-      fwCtx.strokeStyle = `rgba(255, 210, 230, ${this.alpha})`; // 粉白高光
+      fwCtx.strokeStyle = `rgba(255, 210, 230, ${this.alpha})`;
     } else {
       fwCtx.strokeStyle = `hsla(${this.hue}, 100%, ${this.brightness}%, ${this.alpha})`;
-      if (this.type === 'bloom-burst-inner') {
-        fwCtx.lineWidth = 0.8;
-      } else if (this.type === 'sakura-rain' || this.type === 'twin-stream') {
-        fwCtx.lineWidth = 2.5;
-      } else {
-        fwCtx.lineWidth = (this.type === 'firecracker' || this.type === 'willow') ? 2 : 1.5;
-      }
+      if (this.type === 'bloom-burst-inner') fwCtx.lineWidth = 0.8;
+      else if (this.type === 'sakura-rain' || this.type === 'twin-stream') fwCtx.lineWidth = 2.5;
+      else fwCtx.lineWidth = (this.type === 'firecracker' || this.type === 'willow') ? 2 : 1.5;
     }
     fwCtx.stroke();
   }
 }
 
-// ================= 文字烟花粒子 =================
 class TextParticle {
   constructor(x, y, tx, ty) {
     this.x = x; this.y = y; this.tx = tx; this.ty = ty;
@@ -286,7 +219,6 @@ class TextParticle {
   }
 }
 
-// ================= 具象化孔明灯 =================
 class Lantern {
   constructor(x, y) {
     this.x = x; this.y = y; this.size = 12 + Math.random() * 8;
@@ -314,7 +246,6 @@ class Lantern {
   }
 }
 
-// ================= 生成器 =================
 function createExplosion(x, y, hue, mode) {
   let count = 150;
   if (mode === 'willow') { count = 100; } 
@@ -336,18 +267,17 @@ function createExplosion(x, y, hue, mode) {
   }
 }
 
-// ★ 专属生成器：并蒂双生
 function createTwinStream(x, y) {
   for (let i = 0; i < 40; i++) {
     let pLeft = new Particle(x, y, 0, 'twin-stream');
     pLeft.angle = Math.PI * 0.75 + (Math.random() - 0.5) * 0.15; 
-    pLeft.hue = 315 + Math.random() * 15; // 玫红/品红
+    pLeft.hue = 315 + Math.random() * 15;
     pLeft.brightness = 90;
     particles.push(pLeft);
 
     let pRight = new Particle(x, y, 0, 'twin-stream');
     pRight.angle = Math.PI * 0.25 + (Math.random() - 0.5) * 0.15;
-    pRight.hue = 340 + Math.random() * 15; // 亮玫瑰红
+    pRight.hue = 340 + Math.random() * 15;
     pRight.brightness = 90;
     particles.push(pRight);
   }
@@ -401,7 +331,6 @@ function launchKongmingLanterns() {
   }
 }
 
-// ================= 渲染主循环 =================
 function loop() {
   requestAnimationFrame(loop);
   fwCtx.clearRect(0, 0, fwCanvas.width, fwCanvas.height);
@@ -427,7 +356,6 @@ function loop() {
 }
 loop();
 
-// ================= 触发逻辑 =================
 window.launchFirework = function(startX, startY, forcedType = null) {
   if (document.hidden) return; 
   
@@ -445,34 +373,75 @@ window.launchFirework = function(startX, startY, forcedType = null) {
   let hue = Math.floor(Math.random() * 360);
   let type = forcedType || 'normal';
   
-  if (currentTheme && currentTheme.includes('flower') && !forcedType) {
-      // 花语秘境专属色系：品红、玫红、亮玫瑰红、深粉
-      const flowerHues = [320, 325, 330, 335, 340, 350, 355, 360]; 
-      hue = flowerHues[Math.floor(Math.random() * flowerHues.length)];
+  let currentUsersDB = getUsersDB();
+  let useThemeColor = (currentUser && currentUsersDB[currentUser] && currentUsersDB[currentUser].fwThemeColor !== false);
+
+  if (currentTheme && !forcedType && useThemeColor) {
+      const baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
       
-      if (currentTheme === 'flower-max') {
-          const r = Math.random();
-          if (r < 0.15) type = 'sakura-rain';
-          else if (r < 0.30) type = 'bloom-burst';
-          else if (r < 0.45) type = 'twin-spark';
-          else if (r < 0.60) type = 'koi';          // 锦鲤游鱼
-          else if (r < 0.75) type = 'double';       // 双层炸裂
-          else if (r < 0.90) type = 'two-stage';    // 二踢脚
-          else type = 'normal';
-      } else if (currentTheme === 'flower-plus') {
-          const r = Math.random();
-          if (r < 0.4) type = 'willow';
-          else type = 'normal';
+      if (baseTheme === 'default') {
+          const hues = [25, 30, 35, 40, 45]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'gold') {
+          const hues = [45, 50, 55, 60]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'diamond') {
+          const hues = [260, 280, 300, 200, 220]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'sakura') {
+          const hues = [320, 330, 340, 350]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'cyber') {
+          const hues = [180, 120, 300, 330]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'aurora') {
+          const hues = [150, 170, 280, 190]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'flame') {
+          const hues = [0, 10, 20, 30]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'blackgold') {
+          const hues = [40, 45, 50]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'forest') {
+          const hues = [90, 110, 130, 150]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'ocean') {
+          const hues = [190, 210, 230, 160]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'food') {
+          const hues = [15, 25, 35, 45, 10]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'fruit') {
+          const hues = [0, 90, 120, 60, 280]; hue = hues[Math.floor(Math.random() * hues.length)];
+      } else if (baseTheme === 'flower') {
+          const flowerHues = [320, 325, 330, 335, 340, 350, 355, 360]; 
+          hue = flowerHues[Math.floor(Math.random() * flowerHues.length)];
+          if (currentTheme === 'flower-max') {
+              const r = Math.random();
+              if (r < 0.15) type = 'sakura-rain';
+              else if (r < 0.30) type = 'bloom-burst';
+              else if (r < 0.45) type = 'twin-spark';
+              else if (r < 0.60) type = 'koi';
+              else if (r < 0.75) type = 'double';
+              else if (r < 0.90) type = 'two-stage';
+          } else if (currentTheme === 'flower-plus') {
+              if (Math.random() < 0.4) type = 'willow';
+          }
+      } else if (baseTheme === 'spring') {
+          const springHues = [0, 45, 330, 300, 15]; 
+          hue = springHues[Math.floor(Math.random() * springHues.length)];
+          if (currentTheme.includes('plus') || currentTheme.includes('max')) {
+              const r = Math.random();
+              if (r < 0.25) type = 'willow';
+              else if (r < 0.45) type = 'double';
+              else if (r < 0.65) type = 'two-stage';
+              else if (r < 0.85) type = 'koi';
+          }
       }
-  } else if (currentTheme && currentTheme.includes('spring') && !forcedType) {
-      const springHues = [0, 45, 330, 300, 15]; 
-      hue = springHues[Math.floor(Math.random() * springHues.length)];
-      if (currentTheme.includes('plus')) {
+  } else if (currentTheme && !forcedType && !useThemeColor) {
+      if (currentTheme.includes('max') || currentTheme.includes('plus')) {
           const r = Math.random();
-          if (r < 0.25) type = 'willow';
-          else if (r < 0.45) type = 'double';
-          else if (r < 0.65) type = 'two-stage';
-          else if (r < 0.85) type = 'koi';
+          if (currentTheme.includes('flower')) {
+              if (r < 0.15) type = 'sakura-rain';
+              else if (r < 0.30) type = 'bloom-burst';
+              else if (r < 0.45) type = 'twin-spark';
+              else if (r < 0.60) type = 'koi';
+          } else if (currentTheme.includes('spring')) {
+              if (r < 0.25) type = 'willow';
+              else if (r < 0.45) type = 'double';
+              else if (r < 0.65) type = 'two-stage';
+              else if (r < 0.85) type = 'koi';
+          }
       }
   }
   
@@ -488,7 +457,6 @@ setTimeout(() => {
 setInterval(() => {
   if (document.hidden || window.isRpPlaying) return;
   
-  // ★ 核心修改 2：读取用户设置的发射频率倍率
   let currentUsersDB = getUsersDB();
   let freqMult = (currentUser && currentUsersDB[currentUser] && currentUsersDB[currentUser].fwFreq) ? currentUsersDB[currentUser].fwFreq : 1.0;
 
@@ -497,15 +465,15 @@ setInterval(() => {
   const isFlowerPlus = currentTheme === 'flower-plus';
   const isFlowerMax = currentTheme === 'flower-max';
   const isOtherPlus = currentTheme && currentTheme.includes('-plus') && !isFlowerPlus;
+  const isOtherMax = currentTheme && currentTheme.includes('-max') && !isFlowerMax;
 
   if (isFlower) return;
 
-  if (isSpring || isOtherPlus || isFlowerPlus || isFlowerMax) {
+  if (isSpring || isOtherPlus || isFlowerPlus || isFlowerMax || isOtherMax) {
     let baseFreq = 1;
     if (isOtherPlus || isFlowerPlus) baseFreq = 3;
-    if (isFlowerMax) baseFreq = 5;
+    if (isOtherMax || isFlowerMax) baseFreq = 5;
 
-    // 计算最终频率 (向下取整，且至少为 1，防止用户拉太低导致不发射)
     let finalFreq = Math.max(1, Math.floor(baseFreq * freqMult));
 
     for(let i=0; i<finalFreq; i++) {
@@ -516,7 +484,7 @@ setInterval(() => {
 
     if (isSpring) {
       if (Math.random() < 0.4) launchGroundFirecracker();
-      if (currentTheme.includes('spring-plus')) {
+      if (currentTheme.includes('spring-plus') || currentTheme.includes('spring-max')) {
         if (Math.random() < 0.3) launchGatling();
         if (Math.random() < 0.4) launchKongmingLanterns(); 
       }

@@ -6,7 +6,7 @@ let rpTimer = null;
 let rpInterval = null;
 let rpTimeLeft = 10.0;
 let rpClickCount = 0; 
-window.isRpPlaying = false; // ★ 改为全局变量，让烟花引擎知道
+window.isRpPlaying = false;
 
 function checkRedPacketTime() {
   if (!currentUser) return;
@@ -47,7 +47,6 @@ function startRedPacketRain() {
   rpTimeLeft = 10.0;
   rpClickCount = 0;
   
-  // ★ 核心：让烟花画布抬升至最高层，以便展示点击特效；并暂停背景烟花
   if (typeof window.setFireworkLayer === 'function') window.setFireworkLayer(true);
 
   $('#rpScore').textContent = `已收集：0 金币`;
@@ -66,15 +65,10 @@ function startRedPacketRain() {
     let value = 1;
     let color = '#e74c3c';
 
-    if (randType < 0.60) {
-      typeClass = 'pkt-normal'; value = 1; color = '#e74c3c';
-    } else if (randType < 0.85) {
-      typeClass = 'pkt-gold'; value = 3; color = '#f1c40f';
-    } else if (randType < 0.93) {
-      typeClass = 'pkt-star'; value = 5; color = '#f39c12';
-    } else {
-      typeClass = 'pkt-diamond'; value = 10; color = '#00bcd4';
-    }
+    if (randType < 0.60) { typeClass = 'pkt-normal'; value = 1; color = '#e74c3c'; }
+    else if (randType < 0.85) { typeClass = 'pkt-gold'; value = 3; color = '#f1c40f'; }
+    else if (randType < 0.93) { typeClass = 'pkt-star'; value = 5; color = '#f39c12'; }
+    else { typeClass = 'pkt-diamond'; value = 10; color = '#00bcd4'; }
 
     packet.className = 'falling-packet ' + typeClass;
     packet.style.left = Math.random() * 80 + 10 + 'vw';
@@ -99,14 +93,10 @@ function startRedPacketRain() {
 
       packet.remove();
 
-      // 50% 概率触发豪华烟花（从红包位置炸出）
       if (Math.random() < 0.5) {
-        if (typeof window.launchFirework === 'function') {
-          window.launchFirework(clientX, clientY);
-        }
+        if (typeof window.launchFirework === 'function') window.launchFirework(clientX, clientY);
       }
 
-      // 触发屏幕抖动
       if (currentUser) {
         const u = getUsersDB()[currentUser];
         if (!u || u.screenShake !== false) { 
@@ -115,7 +105,6 @@ function startRedPacketRain() {
         }
       }
 
-      // 1. 飘字特效
       const floatText = document.createElement('div');
       floatText.textContent = `+${value} 🪙`;
       floatText.style.position = 'fixed';
@@ -135,13 +124,11 @@ function startRedPacketRain() {
         { transform: 'translate(-50%, -120px) scale(1.2)', opacity: 0 }
       ], { duration: 900, easing: 'ease-out' }).onfinish = () => floatText.remove();
       
-      // 2. 炸裂碎纸屑特效
       for (let i = 0; i < 30; i++) {
         const p = document.createElement('div');
         p.style.position = 'fixed';
         p.style.left = clientX + 'px';
         p.style.top = clientY + 'px';
-        
         const isRect = Math.random() > 0.5;
         const size = 4 + Math.random() * 10;
         p.style.width = (isRect ? size * 0.5 : size) + 'px';
@@ -150,7 +137,6 @@ function startRedPacketRain() {
         p.style.background = ['#f1c40f', color, '#ffffff'][Math.floor(Math.random() * 3)];
         p.style.pointerEvents = 'none';
         p.style.zIndex = '99999';
-        
         document.body.appendChild(p);
         
         const angle = Math.random() * Math.PI * 2;
@@ -164,7 +150,6 @@ function startRedPacketRain() {
         ], { duration: 800 + Math.random() * 400, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }).onfinish = () => p.remove();
       }
 
-      // 3. 飞出金币特效
       for (let i = 0; i < 3; i++) {
         const coin = document.createElement('div');
         coin.textContent = '🪙';
@@ -214,7 +199,6 @@ function startRedPacketRain() {
 function endRedPacketRain() {
   window.isRpPlaying = false;
   
-  // ★ 核心：恢复画布层级，让背景烟花继续
   if (typeof window.setFireworkLayer === 'function') window.setFireworkLayer(false);
 
   clearInterval(rpTimer);
@@ -257,15 +241,11 @@ function endRedPacketRain() {
     showConfirmModal('🎉 红包雨结算', `你一共收集了 <strong>${rpClickCount}</strong> 个金币！<br><br>恭喜抽中：🪙 <strong>${pts}</strong> 积分！`, () => {}, false);
   } else {
     const active = u.vipExpire > Date.now();
-    const start = (active && u.vipLevel === vLevel) ? u.vipExpire : Date.now();
-    let newExpire = 0;
+    const start = (active && u.vipType === (vLevel === 2 ? 'svip' : 'vip')) ? u.vipExpire : Date.now();
     
-    newExpire = (active && u.vipLevel === vLevel) ? start + vDays * 86400000 : Date.now() + vDays * 86400000;
+    u.vipType = vLevel === 2 ? 'svip' : 'vip'; // ★ 直接改 type
+    u.vipExpire = start + (vDays * 86400000);
     
-    if (vLevel > u.vipLevel) u.vipLevel = vLevel;
-    else u.vipLevel = Math.max(u.vipLevel, vLevel);
-    
-    u.vipExpire = newExpire;
     store.set('bb-users', users);
     loadUserData();
 

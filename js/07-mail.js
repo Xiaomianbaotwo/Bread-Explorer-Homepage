@@ -1,11 +1,15 @@
 /* =========================================================
    07-mail.js
-   邮件中心渲染、一键领取附件、批量删除、点击复制码
+   邮件中心渲染、一键领取附件、批量删除、点击复制码 (彻底修复状态同步)
    ========================================================= */
 
 // 辅助函数：同步当前邮件状态到云端
 async function syncEmailsToCloud(u) {
-  await sb.rpc('update_user_emails', { p_emails: u.emails });
+  try {
+    await sb.rpc('update_user_emails', { p_emails: u.emails });
+  } catch (e) {
+    console.error("云端邮件状态同步失败:", e);
+  }
 }
 
 function renderMails() {
@@ -19,8 +23,8 @@ function renderMails() {
   });
   
   if (hasChanged) {
-    store.set('bb-users', users); // 仅更新本地缓存
-    syncEmailsToCloud(u); // 异步同步到云端
+    store.set('bb-users', users); 
+    syncEmailsToCloud(u); 
   }
   updateUserUI();
 
@@ -34,7 +38,6 @@ function renderMails() {
 
       let attachHtml = '';
       if (e.code) {
-        // ★ 核心修改：加上 mail-code-box 类名，允许点击复制
         attachHtml = `
           <div class="mail-code-box" title="点击复制兑换码" style="background:var(--card); padding:8px; border-radius:6px; font-family:monospace; font-size:16px; text-align:center; letter-spacing:1px; color:var(--accent); margin-top:10px; user-select:all; border:1px dashed var(--card-border); cursor:pointer; transition:0.2s;">
             ${e.code}
@@ -73,14 +76,12 @@ function renderMails() {
         </div>
       `;
 
-      // ★ 绑定兑换码点击复制事件
       const codeBox = item.querySelector('.mail-code-box');
       if (codeBox) {
         codeBox.onclick = (ev) => {
           ev.stopPropagation();
           navigator.clipboard.writeText(e.code).then(() => {
             showToast('兑换码已复制', '📋');
-            // 加个小动画反馈
             codeBox.style.transform = 'scale(0.95)';
             setTimeout(() => codeBox.style.transform = 'scale(1)', 150);
           }).catch(() => {
@@ -109,7 +110,6 @@ function renderMails() {
           ev.stopPropagation();
           claimBtn.disabled = true; claimBtn.textContent = '领取中...';
           
-          // ★ 调用安全 RPC 领取
           const { data, error } = await sb.rpc('redeem_benefits', { 
             p_type: 'points', p_amount: e.points, p_level: 0, p_theme: '', p_mail_id: e.id 
           });
@@ -121,37 +121,68 @@ function renderMails() {
           }
 
           showToast(`成功领取 ${e.points} 积分`, '🪙');
-          if (typeof syncFromCloud === 'function') await syncFromCloud();
-          loadUserData();
+          // 直接更新本地数据
+          let upUsers = getUsersDB(); let upU = upUsers[currentUser];
+          const targetMail = upU.emails.find(m => m.id === e.id);
+          if (targetMail) { targetMail.isClaimed = true; }
+          await store.set('bb-users', upUsers);
+          updateUserUI();
           renderMails();
         };
       }
 
       const useBtn = item.querySelector('.use-btn');
       if (useBtn && !e.isUsed) {
+              const useBtn = item.querySelector('.use-btn');
+      if (useBtn && !e.isUsed) {
         useBtn.onclick = async (ev) => {
           ev.stopPropagation();
-          useBtn.disabled = true; useBtn.textContent = '处理中...';
+          
+          // 1. 瞬间在前端给用户反馈！按钮变灰！
+          useBtn.disabled = true; 
+          useBtn.textContent = '处理中...';
+          useBtn.style.opacity = '0.5';
+          useBtn.style.cursor = 'not-allowed';
           
           showToast('正在向云端自动核销...', '⏳');
           const { data, error } = await sb.rpc('redeem_external_code_v3', { p_code: e.code });
           
           if (error || !data.success) {
+            // 如果失败，把按钮还回去
             showToast(data?.msg || '领取失败', '❌');
-            useBtn.disabled = false; useBtn.textContent = '⚡ 立即使用';
+            useBtn.disabled = false; 
+            useBtn.textContent = '⚡ 立即使用';
+            useBtn.style.opacity = '1';
+            useBtn.style.cursor = 'pointer';
             return;
           }
           
-          let upUsers = getUsersDB(); let upU = upUsers[currentUser];
-          const targetMail = upU.emails.find(m => m.id === e.id);
-          if (targetMail) { targetMail.isUsed = true; targetMail.isClaimed = true; }
-          store.set('bb-users', upUsers);
-
+          // 2. 如果成功，直接暴力修改 DOM！
           showToast('🎉 领取成功！', '🪙');
-          if (typeof syncFromCloud === 'function') await syncFromCloud();
-          loadUserData();
-          renderMails();
+          
+          useBtn.textContent = '✅ 已使用'; // 文字直接改掉
+          
+          // 找到同一行的状态文字，直接强改
+          const statusSpan = item.querySelector('.mail-btns span');
+          if (statusSpan) {
+              statusSpan.innerHTML = `<span style="color:#e74c3c">❌ 已使用</span>`;
+          }
+
+          // 3. 后台默默同步数据（用户看不见）
+          let upUsers = getUsersDB(); 
+          let upU = upUsers[currentUser];
+          const targetMail = upU.emails.find(m => m.id === e.id);
+          if (targetMail) { 
+            targetMail.isUsed = true; 
+            targetMail.isClaimed = true; 
+          }
+          store.set('bb-users', upUsers); 
+          await syncEmailsToCloud(upU); 
+
+          // 注意：这里把 renderMails() 删了，或者加上 setTimeout
+          // 我们不去重绘整个列表，直接把当前这封邮件定死！
         };
+       }
       }
 
       list.appendChild(item);
@@ -159,14 +190,8 @@ function renderMails() {
   }
 }
 
-$('#btnMail').onclick = async () => {
+$('#btnMail').onclick = () => {
   if (!currentUser) return;
-  
-  // 点开邮件时，强制向云端请求一次最新数据
-  if (typeof syncFromCloud === 'function') {
-    await syncFromCloud(); 
-  }
-  
   renderMails();
   openOverlay($('#mailOverlay'));
 };
@@ -179,10 +204,8 @@ $('#btnClaimAll').onclick = async () => {
   
   showToast('正在自动核销所有兑换码...', '⏳');
 
-  // 遍历所有带 code 且没用过的邮件
   for (let e of u.emails) {
     if (e.code && !e.isUsed) {
-      // 自动请求云端核销
       const { data, error } = await sb.rpc('redeem_external_code_v3', { p_code: e.code });
       
       if (!error && data && data.success) {
@@ -195,9 +218,10 @@ $('#btnClaimAll').onclick = async () => {
 
   if (successCount > 0) {
     store.set('bb-users', users);
+    await syncEmailsToCloud(u);
+    
     showToast(`一键领取成功！共自动核销 ${successCount} 个福利`, '🎁');
-    if (typeof syncFromCloud === 'function') await syncFromCloud();
-    loadUserData();
+    updateUserUI();
     renderMails();
   } else {
     showToast('没有可领取的附件', '📭');
@@ -215,7 +239,7 @@ $('#btnDeleteAllMails').onclick = () => {
     upUsers[currentUser].emails = [];
     store.set('bb-users', upUsers);
     await syncEmailsToCloud(upUsers[currentUser]);
-    loadUserData();
+    updateUserUI();
     renderMails();
     showToast('所有邮件已删除', '🧹');
   });

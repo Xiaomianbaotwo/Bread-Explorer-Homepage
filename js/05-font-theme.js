@@ -144,10 +144,11 @@ function applyTheme() {
   if (theme === 'dark') body.classList.add('dark');
   
   if (currentTheme && currentTheme !== 'default') {
-    if (currentTheme === 'flower-max') {
-      body.classList.add('theme-flower-max'); // ★ 给 Max 单独分配类名
-    } else {
-      let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
+    // 提取基础主题名，让 flower-max、spring-max 都能自动适配基础配色
+    let baseTheme = currentTheme.replace('-plus', '').replace('-max', '');
+    
+    // 面包原野系列默认使用 :root 配色，不需要额外加 theme-default
+    if (baseTheme !== 'default') {
       body.classList.add('theme-' + baseTheme);
     }
   }

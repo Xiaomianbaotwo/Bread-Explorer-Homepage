@@ -1,15 +1,22 @@
 /* =========================================================
    13-updater.js
-   独立版本更新检测引擎
+   独立版本更新检测引擎 (支持带后缀显示，底层纯净对比)
    ========================================================= */
 
-// ★ 1. 当前版本号（每次发版只改这里，纯数字，千万别带 v）
-const CURRENT_VERSION = "1.5.0"; 
+// ★ 1. 当前版本号（你可以随便加后缀了，比如 -Release, -Beta）
+const CURRENT_VERSION = "1.5.1"; 
 
-// 2. 安全比较版本号大小的函数
+// 2. 安全比较版本号大小的函数（已加入智能净化）
 function isNewerVersion(cloudVer, localVer) {
-  const c = cloudVer.split('.').map(Number);
-  const l = localVer.split('.').map(Number);
+  // ★ 核心升级：提取纯数字部分（比如把 "1.5.0-Release" 提取成 ["1", "5", "0"]）
+  const getPureNums = (ver) => {
+      const match = ver.match(/\d+(\.\d+)*/); // 正则匹配纯数字和点
+      return match ? match[0].split('.').map(Number) : [0];
+  };
+
+  const c = getPureNums(cloudVer);
+  const l = getPureNums(localVer);
+  
   for (let i = 0; i < Math.max(c.length, l.length); i++) {
     const cNum = c[i] || 0;
     const lNum = l[i] || 0;
@@ -46,13 +53,11 @@ function showUpdateModal(data) {
 // 4. 核心检测逻辑（去云端拿 version.json）
 async function checkForUpdates() {
   try {
-    // 相对路径：找同级目录下的 version.json
     const res = await fetch(`./version.json?t=${Date.now()}`);
     if (!res.ok) return; 
 
     const latestData = await res.json();
 
-    // 如果云端版本比本地新，就弹窗
     if (isNewerVersion(latestData.version, CURRENT_VERSION)) {
       showUpdateModal(latestData);
     }
@@ -62,5 +67,27 @@ async function checkForUpdates() {
 }
 
 // ================= 启动应用 =================
-// 延迟 3 秒检查更新，不阻碍主页面加载
 setTimeout(checkForUpdates, 3000);
+
+// ★ 5. 自动在 Logo 旁边渲染带后缀的版本号
+document.addEventListener('DOMContentLoaded', () => {
+    const logoArea = document.querySelector('.logo');
+    if (logoArea) {
+        const versionBadge = document.createElement('span');
+        
+        // 这里会完整显示 "v1.5.0-Release"
+        versionBadge.textContent = `v${CURRENT_VERSION}`; 
+        
+        versionBadge.style.cssText = `
+            font-size: 11px;
+            background: var(--card-border);
+            color: var(--ink);
+            padding: 2px 6px;
+            border-radius: 6px;
+            margin-left: 8px;
+            font-weight: bold;
+            border: 1px solid var(--ink-soft);
+        `;
+        logoArea.appendChild(versionBadge);
+    }
+});
