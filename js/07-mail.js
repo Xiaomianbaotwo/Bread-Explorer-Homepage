@@ -1,15 +1,27 @@
 /* =========================================================
    07-mail.js
-   邮件中心渲染、一键领取附件、批量删除
+   邮件中心渲染、一键领取附件、批量删除、点击复制码
    ========================================================= */
+
+// 辅助函数：同步当前邮件状态到云端
+async function syncEmailsToCloud(u) {
+  await sb.rpc('update_user_emails', { p_emails: u.emails });
+}
 
 function renderMails() {
   if (!currentUser) return;
   let users = getUsersDB(); let u = users[currentUser];
   if (!u.emails) u.emails = [];
 
-  u.emails.forEach(e => e.isRead = true);
-  store.set('bb-users', users);
+  let hasChanged = false;
+  u.emails.forEach(e => {
+    if (!e.isRead) { e.isRead = true; hasChanged = true; }
+  });
+  
+  if (hasChanged) {
+    store.set('bb-users', users); // 仅更新本地缓存
+    syncEmailsToCloud(u); // 异步同步到云端
+  }
   updateUserUI();
 
   const list = $('#mailList'); list.innerHTML = '';
@@ -22,8 +34,9 @@ function renderMails() {
 
       let attachHtml = '';
       if (e.code) {
+        // ★ 核心修改：加上 mail-code-box 类名，允许点击复制
         attachHtml = `
-          <div style="background:var(--card); padding:8px; border-radius:6px; font-family:monospace; font-size:16px; text-align:center; letter-spacing:1px; color:var(--accent); margin-top:10px; user-select:all; border:1px dashed var(--card-border);">
+          <div class="mail-code-box" title="点击复制兑换码" style="background:var(--card); padding:8px; border-radius:6px; font-family:monospace; font-size:16px; text-align:center; letter-spacing:1px; color:var(--accent); margin-top:10px; user-select:all; border:1px dashed var(--card-border); cursor:pointer; transition:0.2s;">
             ${e.code}
           </div>
           <div style="display:flex; justify-content:center; margin-top:8px;">
@@ -42,8 +55,8 @@ function renderMails() {
       }
 
       let statusHtml = '';
-      if (e.code) statusHtml = `<span style="color:${e.isUsed ? '#e74c3c' : '#27ae60'}">${e.isUsed ? '❌ 已使用' : '✅ 未使用'}</span>`;
-      if (e.points) statusHtml = `<span style="color:${e.isClaimed ? '#e74c3c' : '#27ae60'}">${e.isClaimed ? '❌ 已领取' : '✅ 待领取'}</span>`;
+      if (e.code) statusHtml = `<span style="color:${e.isUsed ? '#e74c3c' : '#27ae60'}">${e.isUsed ? '❌ 已使用' : '✅ 待领取'}</span>`;
+      if (e.points && !e.code) statusHtml = `<span style="color:${e.isClaimed ? '#e74c3c' : '#27ae60'}">${e.isClaimed ? '❌ 已领取' : '✅ 待领取'}</span>`;
 
       item.innerHTML = `
         <div class="mail-title">
@@ -60,14 +73,31 @@ function renderMails() {
         </div>
       `;
 
+      // ★ 绑定兑换码点击复制事件
+      const codeBox = item.querySelector('.mail-code-box');
+      if (codeBox) {
+        codeBox.onclick = (ev) => {
+          ev.stopPropagation();
+          navigator.clipboard.writeText(e.code).then(() => {
+            showToast('兑换码已复制', '📋');
+            // 加个小动画反馈
+            codeBox.style.transform = 'scale(0.95)';
+            setTimeout(() => codeBox.style.transform = 'scale(1)', 150);
+          }).catch(() => {
+            showToast('复制失败，请长按手动选择', '⚠️');
+          });
+        };
+      }
+
       item.querySelector('.mail-title').onclick = () => { item.classList.toggle('open'); };
 
       item.querySelector('.del-btn').onclick = (ev) => {
         ev.stopPropagation();
-        showConfirmModal('删除邮件', '确定删除这封邮件吗？删除后不可恢复。', () => {
+        showConfirmModal('删除邮件', '确定删除这封邮件吗？删除后不可恢复。', async () => {
           let upUsers = getUsersDB(); let upU = upUsers[currentUser];
           upU.emails = upU.emails.filter(m => m.id !== e.id);
           store.set('bb-users', upUsers);
+          await syncEmailsToCloud(upU);
           renderMails();
           showToast('邮件已删除', '🧹');
         });
@@ -75,28 +105,52 @@ function renderMails() {
 
       const claimBtn = item.querySelector('.claim-btn');
       if (claimBtn && !e.isClaimed) {
-        claimBtn.onclick = (ev) => {
+        claimBtn.onclick = async (ev) => {
           ev.stopPropagation();
-          let upUsers = getUsersDB(); let upU = upUsers[currentUser];
-          const targetMail = upU.emails.find(m => m.id === e.id);
-          if (targetMail && !targetMail.isClaimed) {
-            targetMail.isClaimed = true;
-            upU.points += targetMail.points;
-            store.set('bb-users', upUsers);
-            showToast(`成功领取 ${targetMail.points} 积分`, '🪙');
-            loadUserData();
-            renderMails();
+          claimBtn.disabled = true; claimBtn.textContent = '领取中...';
+          
+          // ★ 调用安全 RPC 领取
+          const { data, error } = await sb.rpc('redeem_benefits', { 
+            p_type: 'points', p_amount: e.points, p_level: 0, p_theme: '', p_mail_id: e.id 
+          });
+          
+          if (error || data === false) {
+            showToast('领取失败，可能已领取过', '❌');
+            claimBtn.disabled = false; claimBtn.textContent = '📥 领取积分';
+            return;
           }
+
+          showToast(`成功领取 ${e.points} 积分`, '🪙');
+          if (typeof syncFromCloud === 'function') await syncFromCloud();
+          loadUserData();
+          renderMails();
         };
       }
 
       const useBtn = item.querySelector('.use-btn');
       if (useBtn && !e.isUsed) {
-        useBtn.onclick = (ev) => {
+        useBtn.onclick = async (ev) => {
           ev.stopPropagation();
-          if (doRedeem(e.code, true)) {
-            renderMails();
+          useBtn.disabled = true; useBtn.textContent = '处理中...';
+          
+          showToast('正在向云端自动核销...', '⏳');
+          const { data, error } = await sb.rpc('redeem_external_code_v3', { p_code: e.code });
+          
+          if (error || !data.success) {
+            showToast(data?.msg || '领取失败', '❌');
+            useBtn.disabled = false; useBtn.textContent = '⚡ 立即使用';
+            return;
           }
+          
+          let upUsers = getUsersDB(); let upU = upUsers[currentUser];
+          const targetMail = upU.emails.find(m => m.id === e.id);
+          if (targetMail) { targetMail.isUsed = true; targetMail.isClaimed = true; }
+          store.set('bb-users', upUsers);
+
+          showToast('🎉 领取成功！', '🪙');
+          if (typeof syncFromCloud === 'function') await syncFromCloud();
+          loadUserData();
+          renderMails();
         };
       }
 
@@ -105,31 +159,48 @@ function renderMails() {
   }
 }
 
-$('#btnMail').onclick = () => {
+$('#btnMail').onclick = async () => {
   if (!currentUser) return;
+  
+  // 点开邮件时，强制向云端请求一次最新数据
+  if (typeof syncFromCloud === 'function') {
+    await syncFromCloud(); 
+  }
+  
   renderMails();
   openOverlay($('#mailOverlay'));
 };
 $('#btnMailClose').onclick = () => closeOverlay($('#mailOverlay'));
 
-$('#btnClaimAll').onclick = () => {
+$('#btnClaimAll').onclick = async () => {
   if (!currentUser) return;
   let users = getUsersDB(); let u = users[currentUser];
-  let total = 0;
-  u.emails.forEach(e => {
-    if (e.points && !e.isClaimed) {
-      e.isClaimed = true;
-      total += e.points;
+  let successCount = 0;
+  
+  showToast('正在自动核销所有兑换码...', '⏳');
+
+  // 遍历所有带 code 且没用过的邮件
+  for (let e of u.emails) {
+    if (e.code && !e.isUsed) {
+      // 自动请求云端核销
+      const { data, error } = await sb.rpc('redeem_external_code_v3', { p_code: e.code });
+      
+      if (!error && data && data.success) {
+        e.isUsed = true;
+        e.isClaimed = true;
+        successCount++;
+      }
     }
-  });
-  if (total > 0) {
-    u.points += total;
+  }
+
+  if (successCount > 0) {
     store.set('bb-users', users);
-    showToast(`一键领取成功！共获得 ${total} 积分`, '🪙');
+    showToast(`一键领取成功！共自动核销 ${successCount} 个福利`, '🎁');
+    if (typeof syncFromCloud === 'function') await syncFromCloud();
     loadUserData();
     renderMails();
   } else {
-    showToast('没有可领取的积分附件', '📭');
+    showToast('没有可领取的附件', '📭');
   }
 };
 
@@ -139,10 +210,11 @@ $('#btnDeleteAllMails').onclick = () => {
   if (!u.emails || u.emails.length === 0) {
     return showToast('当前没有邮件可删除', '📭');
   }
-  showConfirmModal('清空邮件', '确定要删除所有邮件吗？此操作不可恢复！', () => {
+  showConfirmModal('清空邮件', '确定要删除所有邮件吗？此操作不可恢复！', async () => {
     let upUsers = getUsersDB();
     upUsers[currentUser].emails = [];
     store.set('bb-users', upUsers);
+    await syncEmailsToCloud(upUsers[currentUser]);
     loadUserData();
     renderMails();
     showToast('所有邮件已删除', '🧹');

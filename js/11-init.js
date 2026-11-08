@@ -138,7 +138,8 @@ async function syncFromCloud() {
         points: a.points || 0, vipType: a.vip_type || 'none', vipLevel: a.vip_level || 0, vipExpire: a.vip_expire || 0, unlockedThemes: a.unlocked_themes || [], emails: a.emails || [],
         customSites: p.sites || [], customHistory: p.history || [], currentTheme: p.current_theme || 'default',
         enFont: set.enFont || 'default', zhFont: set.zhFont || 'default', fwSpeed: set.fwSpeed || 1.0, fwFreq: set.fwFreq || 1.0, screenShake: set.screenShake !== false,
-        customFonts: set.customFonts || [], lastRpDate: set.lastRpDate || '', rpCount: set.rpCount || 0, day7Sent: set.day7Sent || false, day30Sent: set.day30Sent || false, springSent: set.springSent || false
+        customFonts: set.customFonts || [], lastRpDate: set.lastRpDate || '', rpCount: set.rpCount || 0, day7Sent: set.day7Sent || false, day30Sent: set.day30Sent || false, springSent: set.springSent || false,
+        lastPointDate: set.lastPointDate || ''
       };
 
       let localUsers = store.get('bb-users', {});
@@ -157,6 +158,49 @@ async function syncFromCloud() {
   }
 }
 
+// ================= 启动应用 =================
 syncFromCloud();
+
+// ★ 1. 开启 Supabase 实时监听（WebSocket 长连接）
+async function initRealtime() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+
+  sb.channel('realtime_bread_assets')
+    .on(
+      'postgres_changes',
+      { 
+        event: 'UPDATE', 
+        schema: 'public', 
+        table: 'bread_assets', 
+        filter: `user_id=eq.${user.id}` // 只监听自己的数据
+      },
+      (payload) => {
+        console.log('🔔 收到云端实时推送，正在更新数据...', payload);
+        // 收到推送，立刻静默拉取最新数据（不弹加载进度条）
+        syncFromCloud(); 
+      }
+    )
+    .subscribe();
+}
+
+// 延迟 1 秒执行，确保登录状态已加载
+setTimeout(initRealtime, 1000);
+
+// ★ 2. 兜底方案：用户切回网页瞬间，立刻同步（防止手机息屏断连）
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && currentUser) {
+    console.log('👀 用户切回网页，强制同步一次');
+    if (typeof syncFromCloud === 'function') syncFromCloud();
+  }
+});
+
+// ★ 3. 兜底方案：每 60 秒后台静默同步一次（防止某些网络下 WebSocket 断连）
+setInterval(() => {
+  if (currentUser && !document.hidden) {
+    if (typeof syncFromCloud === 'function') syncFromCloud();
+  }
+}, 60000);
+
 setTimeout(checkRedPacketTime, 2000);
 setInterval(checkRedPacketTime, 60 * 1000);

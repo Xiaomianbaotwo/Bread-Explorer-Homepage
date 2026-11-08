@@ -1,157 +1,249 @@
 /* =========================================================
    10-dev.js
-   开发者模式：云端强校验唤醒、修改数据、生成/管理兑换码、测试红包雨
+   开发者模式：免密通行证、三端执行、强制 UUID 校验、极客暗号
    ========================================================= */
 
 window.isDevMode = false; 
 window.isAutoRainEnabled = false; 
-
-// ★ 你的专属金库身份证（已填好，记得确认是不是最新后台的）
-const DEV_UUID = '68be6e83-3e22-44f9-aeb3-c3541ed2e8f1';
+const DEV_UUID = 'b53b3bc6-6126-42a5-8f9c-c80f93196d58';
 
 function closeDevPanel() {
   window.isDevMode = false;
   window.isAutoRainEnabled = false; 
-  
   const btn = $('#btnDevAutoRain');
   if (btn) {
-    btn.style.color = '#9b59b6';
-    btn.style.background = 'transparent';
+    btn.style.color = '#9b59b6'; btn.style.background = 'transparent';
     btn.textContent = '🤖 自动领取红包(0.7秒)';
   }
-
   $('#devPanel').classList.remove('show');
 }
 
-// ★ 核心：按 K 键时，强制向云端请求比对 UUID
+// ==================== 唤醒方式一：快捷键 K ====================
 document.addEventListener('keydown', async (e) => {
   if (e.target.tagName.toLowerCase() === 'input' || e.target.tagName.toLowerCase() === 'textarea') return;
-
   if (currentUser && e.key.toLowerCase() === 'k') {
-    
-    // 如果已经开启了，按 K 直接关闭
     if (window.isDevMode) {
-      window.isDevMode = false;
-      $('#devPanel').classList.remove('show');
-      showToast('开发者模式已关闭', '🔒');
-      return;
+      window.isDevMode = false; $('#devPanel').classList.remove('show');
+      return showToast('开发者模式已关闭', '🔒');
     }
-
-    // 向官方金库请求真实身份
     try {
-      showToast('正在向云端验证开发者身份...', '⏳');
-      
+      showToast('正在向云端验证身份...', '⏳');
       const { data: { user }, error } = await sb.auth.getUser();
-
-      if (error || !user) {
-        return showToast('验证失败：未登录或凭证已过期', '❌');
-      }
-
-      // 官方返回了真实的 user.id，和我们硬编码的管理员 UUID 进行比对
+      if (error || !user) return showToast('验证失败：未登录', '❌');
       if (user.id === DEV_UUID) {
-        window.isDevMode = true;
-        $('#devPanel').classList.add('show');
-        showToast('身份验证通过，欢迎回来，主理人！', '👑');
-      } else {
-        showToast('拒绝访问：您没有管理员权限', '🚫');
-      }
-      
-    } catch (err) {
-      showToast('身份验证请求失败，请检查网络', '❌');
-    }
+        window.isDevMode = true; $('#devPanel').classList.add('show');
+        showToast('身份验证通过，欢迎主理人！', '👑');
+      } else { showToast('拒绝访问：无管理员权限', '🚫'); }
+    } catch (err) { showToast('请求失败，检查网络', '❌'); }
   }
 });
 
-// 下面是你原来的面板按钮绑定，完全保持不变
-$('#btnDevClose').onclick = () => {
-  closeDevPanel();
-  showToast('开发者模式已关闭', '🔒');
+// ==================== 唤醒方式二：搜索框极客暗号 ====================
+// 监听搜索框的按键，如果输入的是面包 Key 且属于 DEV_UUID，直接开后门
+document.addEventListener('DOMContentLoaded', () => {
+  const searchInput = $('#searchInput');
+  if (searchInput) {
+    searchInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        const val = searchInput.value.trim();
+        // 判断是不是标准的 key 格式 (bread-key-...)
+        if (val.startsWith('bread-key-') && val.length === 42) {
+          e.preventDefault(); // 阻止正常的搜索跳转
+          
+          try {
+            const { data: { user }, error } = await sb.auth.getUser();
+            if (!error && user && user.id === DEV_UUID) {
+              const users = getUsersDB();
+              // 验证这串暗号是不是当前登录管理员的面包 Key
+              if (users[currentUser] && users[currentUser].key === val) {
+                window.isDevMode = true;
+                $('#devPanel').classList.add('show');
+                showToast('极客暗号验证通过，欢迎主理人！', '🕶️');
+                searchInput.value = ''; // 清空搜索框
+                return;
+              }
+            }
+            showToast('无效的暗号', '🚫');
+            searchInput.value = '';
+          } catch (err) {
+            showToast('暗号验证失败', '❌');
+          }
+        }
+      }
+    });
+  }
+});
+
+$('#btnDevClose').onclick = () => { closeDevPanel(); showToast('开发者模式已关闭', '🔒'); };
+
+// ==================== 执行器核心逻辑 ====================
+let currentRunMode = 'js';
+
+function checkDevSecret(mode, callback) {
+    const now = Date.now();
+    const bypassDataStr = localStorage.getItem('bb-dev-bypass');
+    if (bypassDataStr) {
+        try {
+            const bypass = JSON.parse(bypassDataStr);
+            if (bypass[mode] && bypass[mode].count > 0 && bypass[mode].expire > now) {
+                bypass[mode].count--;
+                localStorage.setItem('bb-dev-bypass', JSON.stringify(bypass));
+                showToast(`本机免密通过！剩余次数：${bypass[mode].count}`, '🔓');
+                callback();
+                return;
+            }
+        } catch(e) {}
+    }
+    
+    const modeName = mode === 'js' ? '前端' : mode === 'sql' ? '后端' : '全栈';
+    showInputModal('身份验证', `请输入开发者【${modeName}】专属密钥`, '', async (input) => {
+        if (!input) return;
+        showToast('正在向云端验证密钥...', '⏳');
+        const { data, error } = await sb.rpc('verify_dev_secret', { p_mode: mode, p_input: input });
+        
+        if (error) return showToast('网络错误: ' + error.message, '❌');
+        
+        if (data === true) {
+            showToast('密钥正确，欢迎主理人', '👑');
+            setTimeout(() => {
+                showInputModal('免密设置', '是否在当前电脑开启免密通行证？\n请输入免密次数 (输入0则本次单次生效)', '15', (countStr) => {
+                    const count = parseInt(countStr, 10);
+                    if (!isNaN(count) && count > 0) {
+                        const bypassDataStr = localStorage.getItem('bb-dev-bypass');
+                        let bypass = bypassDataStr ? JSON.parse(bypassDataStr) : {};
+                        bypass[mode] = {
+                            count: count - 1, 
+                            expire: now + 24 * 60 * 60 * 1000 
+                        };
+                        localStorage.setItem('bb-dev-bypass', JSON.stringify(bypass));
+                        showToast(`已开启本机免密，剩余 ${count - 1} 次`, '🔓');
+                    }
+                    callback();
+                });
+            }, 300);
+        } else {
+            showToast('密钥错误，拒绝访问！', '🚫');
+        }
+    });
+}
+
+function openDevRunner(mode) {
+    currentRunMode = mode;
+    const title = $('#runCodeTitle');
+    const jsArea = $('#jsCodeArea');
+    const sqlArea = $('#sqlCodeArea');
+    
+    if (!title || !jsArea || !sqlArea) {
+        return alert('页面缺少双端输入弹窗结构，请更新 index.html！');
+    }
+    
+    if (mode === 'js') title.textContent = '💻 执行自定义代码(前端)';
+    else if (mode === 'sql') title.textContent = '📡 执行自定义代码(后端)';
+    else title.textContent = '🚀 执行自定义代码(前端+后端)';
+
+    jsArea.style.display = (mode === 'js' || mode === 'all') ? 'block' : 'none';
+    sqlArea.style.display = (mode === 'sql' || mode === 'all') ? 'block' : 'none';
+    
+    $('#runJsInput').value = '';
+    $('#runSqlInput').value = '';
+    openOverlay($('#runCodeOverlay'));
+}
+
+$('#btnDevRunJs').onclick = () => checkDevSecret('js', () => openDevRunner('js'));
+$('#btnDevRunSql').onclick = () => checkDevSecret('sql', () => openDevRunner('sql'));
+$('#btnDevRunAll').onclick = () => checkDevSecret('all', () => openDevRunner('all'));
+
+$('#btnRunCodeCancel').onclick = () => closeOverlay($('#runCodeOverlay'));
+
+$('#btnRunCodeExecute').onclick = async () => {
+    const jsCode = $('#runJsInput').value.trim();
+    const sqlCode = $('#runSqlInput').value.trim();
+    
+    if (currentRunMode === 'js' || currentRunMode === 'all') {
+        if (jsCode) {
+            try {
+                new Function(jsCode)();
+                showToast('前端代码执行成功', '✅');
+            } catch (e) {
+                return showToast('前端代码错误: ' + e.message, '❌');
+            }
+        }
+    }
+
+    if (currentRunMode === 'sql' || currentRunMode === 'all') {
+        if (sqlCode) {
+            showToast('正在请求云端执行...', '⏳');
+            const { data, error } = await sb.rpc('dev_execute_sql', { p_sql: sqlCode });
+            if (error) return showToast('网络或 RPC 错误: ' + error.message, '❌');
+            if (!data.success) return showToast('后端执行失败: ' + data.error, '❌');
+            showToast('后端代码执行成功', '✅');
+        }
+    }
+
+    closeOverlay($('#runCodeOverlay'));
+    if (currentRunMode !== 'js' && sqlCode) {
+        setTimeout(() => { if (typeof syncFromCloud === 'function') syncFromCloud(); }, 500);
+    }
 };
 
 $('#btnDevStartRain').onclick = () => {
   if (!currentUser) return showToast('请先登录', '⚠️');
   closeOverlay($('#confirmOverlay')); 
-  if (typeof startRedPacketRain === 'function') {
-    startRedPacketRain();
-    showToast('红包雨已启动', '🧧');
-  } else {
-    showToast('红包雨模块未加载', '❌');
-  }
+  if (typeof startRedPacketRain === 'function') { startRedPacketRain(); showToast('红包雨已启动', '🧧'); }
 };
 
 $('#btnDevAutoRain').onclick = () => {
   window.isAutoRainEnabled = !window.isAutoRainEnabled;
   const btn = $('#btnDevAutoRain');
   if (window.isAutoRainEnabled) {
-    btn.style.color = '#fff';
-    btn.style.background = '#9b59b6';
+    btn.style.color = '#fff'; btn.style.background = '#9b59b6';
     btn.textContent = '🤖 自动领取：已开启(0.7秒)';
-    showToast('已开启自动领取（红包出现0.7秒后自动点击）', '🤖');
+    showToast('已开启自动领取', '🤖');
   } else {
-    btn.style.color = '#9b59b6';
-    btn.style.background = 'transparent';
+    btn.style.color = '#9b59b6'; btn.style.background = 'transparent';
     btn.textContent = '🤖 自动领取红包(0.7秒)';
     showToast('已关闭自动领取', '🔒');
   }
 };
 
 $('#btnDevAddDay').onclick = () => {
-  if (!currentUser) return showToast('请先登录', '⚠️');
-  showInputModal('模拟增加注册时长', '请输入要增加的天数（如：10）', '10', (input) => {
-    const days = parseInt(input, 10);
-    if (isNaN(days) || days <= 0) return showToast('请输入有效的天数', '❌');
-    let users = getUsersDB(); let u = users[currentUser];
-    u.regTime -= days * 24 * 60 * 60 * 1000;
-    store.set('bb-users', users);
-    loadUserData();
-    showToast(`已模拟增加 ${days} 天`, '🛠️');
+  if (!currentUser) return;
+  showInputModal('增加注册时长', '输入增加天数', '10', (input) => {
+    let u = getUsersDB()[currentUser];
+    u.regTime -= parseInt(input) * 86400000;
+    store.set('bb-users', getUsersDB()); loadUserData();
   });
 };
 
 $('#btnDevSetDay').onclick = () => {
-  if (!currentUser) return showToast('请先登录', '⚠️');
-  showInputModal('模拟设置注册时长', '请输入要设置的天数（如：30）', '30', (input) => {
-    const days = parseInt(input, 10);
-    if (isNaN(days) || days <= 0) return showToast('请输入有效的天数', '❌');
-    let users = getUsersDB(); let u = users[currentUser];
-    u.regTime = Date.now() - days * 24 * 60 * 60 * 1000;
-    store.set('bb-users', users);
-    loadUserData();
-    showToast(`注册时长设为 ${days} 天`, '🛠️');
+  if (!currentUser) return;
+  showInputModal('设置注册时长', '输入天数', '30', (input) => {
+    let u = getUsersDB()[currentUser];
+    u.regTime = Date.now() - parseInt(input) * 86400000;
+    store.set('bb-users', getUsersDB()); loadUserData();
   });
 };
 
 $('#btnDevSetPoints').onclick = () => {
-  if (!currentUser) return showToast('请先登录', '⚠️');
-  showInputModal('设置用户积分', '请输入要设置的积分数', '10000', (input) => {
-    const pts = parseInt(input, 10);
-    if (isNaN(pts) || pts < 0) return showToast('请输入有效数字', '❌');
-    let users = getUsersDB(); let u = users[currentUser];
-    u.points = pts;
-    store.set('bb-users', users);
-    loadUserData();
-    showToast(`积分已设为 ${pts}`, '🪙');
+  if (!currentUser) return;
+  showInputModal('设置积分', '输入积分数', '10000', (input) => {
+    let u = getUsersDB()[currentUser];
+    u.points = parseInt(input);
+    store.set('bb-users', getUsersDB()); loadUserData();
   });
 };
 
 function setDevVip(level) {
-  if (!currentUser) return showToast('请先登录', '⚠️');
+  if (!currentUser) return;
+  let users = getUsersDB(); let u = users[currentUser];
   if (level === 0) {
-    let users = getUsersDB(); let u = users[currentUser];
-    u.vipLevel = 0; u.vipExpire = 0;
-    store.set('bb-users', users);
-    loadUserData();
-    return showToast('已设为普通用户', '🔧');
+    u.vipLevel = 0; u.vipExpire = 0; u.vipType = 'none';
+    store.set('bb-users', users); loadUserData(); return showToast('已设为普通用户', '🔧');
   }
-  showInputModal(`设为 ${level === 1 ? 'VIP' : 'SVIP'}`, '输入时长（天，0为永久）', level === 1 ? '30' : '365', (input) => {
-    const days = parseInt(input, 10);
-    if (isNaN(days) || days < 0) return showToast('请输入有效的天数', '❌');
-    let users = getUsersDB(); let u = users[currentUser];
-    u.vipLevel = level;
-    u.vipExpire = days === 0 ? 0 : Date.now() + days * 24 * 60 * 60 * 1000;
-    store.set('bb-users', users);
-    loadUserData();
-    showToast(`已设为 ${level === 1 ? 'VIP' : 'SVIP'}`, '🔧');
+  showInputModal(`设为 ${level === 1 ? 'VIP' : 'SVIP'}`, '天数(0为永久)', level === 1 ? '30' : '365', (input) => {
+    u.vipLevel = level; u.vipType = level === 2 ? 'svip' : 'vip';
+    u.vipExpire = input === '0' ? 0 : Date.now() + parseInt(input) * 86400000;
+    store.set('bb-users', users); loadUserData();
   });
 }
 
@@ -159,99 +251,57 @@ $('#btnDevSetNone').onclick = () => setDevVip(0);
 $('#btnDevSetVip').onclick = () => setDevVip(1);
 $('#btnDevSetSvip').onclick = () => setDevVip(2);
 $('#btnDevSetForever').onclick = () => {
-  if (!currentUser) return showToast('请先登录', '⚠️');
-  let users = getUsersDB(); let u = users[currentUser];
-  u.vipLevel = 2; u.vipExpire = 0;
-  store.set('bb-users', users);
-  loadUserData();
-  showToast('已设为永久 SVIP', '🔧');
+  if (!currentUser) return;
+  let users = getUsersDB(); users[currentUser].vipLevel = 2; users[currentUser].vipExpire = 0; users[currentUser].vipType = 'svip';
+  store.set('bb-users', users); loadUserData(); showToast('已设为永久 SVIP', '🔧');
 };
 
-$('#btnDevManageCodes').onclick = () => {
-  $('#codeManageInput').value = '';
-  openOverlay($('#codeManageOverlay'));
-};
-
+$('#btnDevManageCodes').onclick = () => { $('#codeManageInput').value = ''; openOverlay($('#codeManageOverlay')); };
 $('#btnDevGenCode').onclick = () => {
   showInputModal(
-    '生成兑换码',
-    '格式：类型,数值。例：SVIP,365 ｜ VIP,30 ｜ SVIP,0（永久）｜ POINT,500',
-    'SVIP,365',
-    (input) => {
+    '批量生成兑换码', 
+    '格式：类型,数值,数量。\n例如：SVIP,30,10（生成10个30天SVIP）\n例如：POINT,500,50（生成50个500积分）', 
+    'SVIP,30,10', 
+    async (input) => {
       const parts = input.split(',').map(s => s.trim());
-      const type = (parts[0] || '').toUpperCase();
+      const type = (parts[0] || '').toLowerCase(); 
       const val = parseInt(parts[1], 10);
-      let code;
+      const count = parseInt(parts[2], 10) || 1;
 
-      if (type === 'POINT') {
-        if (isNaN(val) || val <= 0) return showToast('积分数无效', '❌');
-        code = createRedeemCode(0, 0, val);
-      } else if (type === 'VIP' || type === 'SVIP') {
-        if (isNaN(val) || val < 0) return showToast('天数无效', '❌');
-        code = createRedeemCode(type === 'SVIP' ? 2 : 1, val, 0);
-      } else {
+      if (type !== 'vip' && type !== 'svip' && type !== 'points') {
         return showToast('类型只能是 VIP / SVIP / POINT', '❌');
       }
+      if (isNaN(val) || val < 0) return showToast('天数或积分数无效', '❌');
 
-      if (navigator.clipboard) navigator.clipboard.writeText(code).catch(() => {});
-      showInputModal('兑换码已生成（已尝试复制）', '可全选复制发给用户', code, () => {});
+      showToast(`正在向云端申请生成 ${count} 个码...`, '⏳');
+      
+      const { data, error } = await sb.rpc('generate_redeem_code_v3', {
+        p_type: type,
+        p_value: val,
+        p_count: count,
+        p_admin_id: DEV_UUID
+      });
+
+      if (error) return showToast('生成失败：' + error.message, '❌');
+
+      const codeListText = data.join('\n');
+      
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(codeListText).then(() => {
+          showToast(`成功生成 ${count} 个码，已复制到剪贴板`, '📋');
+        }).catch(() => {
+          showToast(`成功生成 ${count} 个码`, '🎉');
+        });
+      }
+
+      showInputModal(`成功生成 ${count} 个（已复制全部）`, '10位乱序，有效期7天。', data[0], () => {});
     }
   );
 };
-
 $('#btnCodeManageCancel').onclick = () => closeOverlay($('#codeManageOverlay'));
 $('#btnCodeManageSave').onclick = () => {
-  const newRaw = $('#codeManageInput').value.trim();
-  if (!newRaw) { closeOverlay($('#codeManageOverlay')); return; }
-
   let oldRaw = store.get('bb-custom-codes-raw', '');
   if (oldRaw && !oldRaw.endsWith('\n')) oldRaw += '\n';
-  store.set('bb-custom-codes-raw', oldRaw + newRaw);
-
-  const lines = newRaw.split('\n');
-  let successCount = 0;
-  lines.forEach(line => {
-    const code = line.trim().toUpperCase();
-    if (!code) return;
-
-    const ptsMatch = code.match(/^POINT-STRING-(\d+)-[A-Z0-9]{7}$/);
-    if (ptsMatch) {
-      REDEEM_DB[hashCode(code)] = { level: 0, days: 0, points: parseInt(ptsMatch[1], 10) };
-      successCount++;
-      return;
-    }
-
-    if (code.startsWith('POINT-STRING-')) return;
-
-    const match = code.match(/^(VIP|SVIP)-STRING-(\d+[DMQY]|LIFE)-[A-Z0-9]{7}$/);
-    if (match) {
-      const level = match[1] === 'SVIP' ? 2 : 1;
-      const days = parseTimeStr(match[2]);
-      if (!isNaN(days)) {
-        REDEEM_DB[hashCode(code)] = { level, days, points: 0 };
-        successCount++;
-      }
-    }
-  });
-
-  closeOverlay($('#codeManageOverlay'));
-  showToast(`已成功添加 ${successCount} 个兑换码`, '🎫');
-};
-
-$('#btnDevRunCode').onclick = () => {
-  $('#runCodeInput').value = '';
-  openOverlay($('#runCodeOverlay'));
-};
-
-$('#btnRunCodeCancel').onclick = () => closeOverlay($('#runCodeOverlay'));
-$('#btnRunCodeExecute').onclick = () => {
-  const code = $('#runCodeInput').value;
-  if (!code.trim()) return;
-  try {
-    new Function(code)();
-    showToast('代码执行成功', '✅');
-    closeOverlay($('#runCodeOverlay'));
-  } catch (e) {
-    showToast('代码错误: ' + e.message, '❌');
-  }
+  store.set('bb-custom-codes-raw', oldRaw + $('#codeManageInput').value.trim());
+  closeOverlay($('#codeManageOverlay')); showToast(`添加成功`, '🎫');
 };
