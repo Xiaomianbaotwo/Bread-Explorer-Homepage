@@ -4,7 +4,7 @@
    ========================================================= */
 
 // ★ 1. 当前版本号（你可以随便加后缀了，比如 -Release, -Beta）
-const CURRENT_VERSION = "1.5.1"; 
+const CURRENT_VERSION = "1.5.9"; 
 
 // 2. 安全比较版本号大小的函数（已加入智能净化）
 function isNewerVersion(cloudVer, localVer) {
@@ -68,26 +68,3 @@ async function checkForUpdates() {
 
 // ================= 启动应用 =================
 setTimeout(checkForUpdates, 3000);
-
-// ★ 5. 自动在 Logo 旁边渲染带后缀的版本号
-document.addEventListener('DOMContentLoaded', () => {
-    const logoArea = document.querySelector('.logo');
-    if (logoArea) {
-        const versionBadge = document.createElement('span');
-        
-        // 这里会完整显示 "v1.5.0-Release"
-        versionBadge.textContent = `v${CURRENT_VERSION}`; 
-        
-        versionBadge.style.cssText = `
-            font-size: 11px;
-            background: var(--card-border);
-            color: var(--ink);
-            padding: 2px 6px;
-            border-radius: 6px;
-            margin-left: 8px;
-            font-weight: bold;
-            border: 1px solid var(--ink-soft);
-        `;
-        logoArea.appendChild(versionBadge);
-    }
-});

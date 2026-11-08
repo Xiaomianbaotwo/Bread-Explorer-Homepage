@@ -44,7 +44,7 @@ function getUsersDB() {
     if (typeof db[name].springSent !== 'boolean') db[name].springSent = false;
     if (typeof db[name].fwSpeed !== 'number') db[name].fwSpeed = 1.0;
     if (typeof db[name].fwFreq !== 'number') db[name].fwFreq = 1.0;
-    if (typeof db[name].fwThemeColor !== 'boolean') db[name].fwThemeColor = true; // ★ 适配颜色开关
+    if (typeof db[name].fwThemeColor !== 'boolean') db[name].fwThemeColor = true;
   }
   return db;
 }
@@ -102,7 +102,6 @@ function markCodeUsed(code) {
   if (!used.includes(hashCode(code))) { used.push(hashCode(code)); store.set('bb-used-codes', used); }
 }
 
-// ★ 彻底去掉 level 判定，只看 type
 function checkVipStatus(userObj) {
   if (!userObj) return { expire: 0, type: 'none' };
   let type = userObj.vipType || 'none';
@@ -331,7 +330,6 @@ $('#btnThemeSelect').onclick = () => {
     configArea.style.display = 'block';
     if ($('#fwSpeedInput')) $('#fwSpeedInput').value = u.fwSpeed.toFixed(1);
     if ($('#fwFreqInput')) $('#fwFreqInput').value = u.fwFreq.toFixed(1);
-    // ★ 读取颜色适配开关
     if ($('#fwThemeColorToggle')) $('#fwThemeColorToggle').checked = u.fwThemeColor !== false;
   } else {
     configArea.style.display = 'none';
@@ -355,7 +353,6 @@ document.addEventListener('change', (e) => {
     showToast('烟花参数已更新', '⚙️');
   }
 
-  // ★ 监听颜色适配开关
   if (e.target.id === 'fwThemeColorToggle') {
     let users = getUsersDB();
     let u = users[currentUser];
@@ -459,6 +456,10 @@ $('#btnAuthSubmit').onclick = async () => {
     closeOverlay($('#loginOverlay')); 
     
     showToast('欢迎回来', '🍞');
+    
+    // ★ 核心修复：登录成功后，立刻刷新本地数据与界面UI
+    loadUserData(); 
+    
     if (typeof checkRedPacketTime === 'function') checkRedPacketTime();
     if (typeof syncFromCloud === 'function') syncFromCloud();
   }

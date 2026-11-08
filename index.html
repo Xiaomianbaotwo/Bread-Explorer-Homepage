@@ -11,21 +11,60 @@
   <link rel="stylesheet" href="css/04-modals.css">
   <link rel="stylesheet" href="css/05-effects.css">
   <link rel="stylesheet" href="css/06-fonts.css">
+  <link rel="stylesheet" href="css/07-friends.css">
   
-  <!-- ★ 核心修复：引入 Supabase 官方 SDK -->
+  <!-- 引入 Supabase 官方 SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <!-- ★ 核心修复：补上丢失的启动加载遮罩层 -->
+  <!-- ================= 启动加载遮罩层 ================= -->
   <div class="overlay show" id="loadingOverlay" style="z-index: 9999; background: var(--bg1);">
-    <div id="loadingContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
-      <div style="font-size: 50px; animation: bob 2s infinite;">🍞</div>
-      <h2 style="margin: 20px 0;">面包浏览器</h2>
-      <div style="width: 200px; height: 6px; background: rgba(0,0,0,0.1); border-radius: 3px; overflow: hidden;">
-        <div id="progressBar" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.3s;"></div>
+    <div id="loadingContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; padding-bottom: 10vh; box-sizing: border-box;">
+      
+      <!-- 顶部标题区域 -->
+      <div style="font-size: 50px; animation: bob 2s infinite; margin-bottom: 10px;">🍞</div>
+      <h2 style="margin: 0 0 15px 0; font-size: 26px; letter-spacing: 2px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+          面包浏览器
+          <span id="loading-version-badge" style="font-size: 14px; font-weight: 600; color: var(--ink); background: var(--card-border); padding: 2px 8px; border-radius: 6px; border: 1px solid var(--ink-soft); letter-spacing: 0; line-height: 1.2;">v1.5.1</span>
+      </h2>
+      
+      <!-- 进度信息显示 (分两行) -->
+      <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 15px; color: var(--accent); font-weight: 900; font-variant-numeric: tabular-nums;">
+          <!-- 第一行：百分比 -->
+          <div id="loadingPercent" style="font-size: 32px; line-height: 1; text-shadow: 0 2px 5px var(--glow-1); margin-bottom: 6px;">已加载 0%</div>
+          <!-- 第二行：剩余时间 -->
+          <div id="loadingTimeLeft" style="font-size: 18px; line-height: 1; opacity: 0.8;">剩余 18.0 秒 加载完成</div>
       </div>
-      <p id="loadingText" style="margin-top: 10px; font-size: 14px; color: var(--ink-soft);">正在连接云端 (0%)</p>
+
+      <!-- ★ 小点：阶段文字 (在上进度条上方) -->
+      <div id="loadingText" style="font-size: 14px; color: var(--ink-soft); font-weight: 600; letter-spacing: 1px; margin-bottom: 8px; height: 20px;">正在唤醒系统...</div>
+
+      <!-- ★ 上进度条 (当前阶段，6px) -->
+      <div style="width: 320px; height: 6px; background: rgba(0,0,0,0.08); border-radius: 10px; overflow: hidden; margin-bottom: 6px;">
+        <div id="progressBar" style="width: 0%; height: 100%; background: var(--accent); transition: width 0.1s linear; border-radius: 10px;"></div>
+      </div>
+
+      <!-- ★ 下进度条 (总进度，12px) -->
+      <div style="width: 320px; height: 12px; background: rgba(0,0,0,0.06); border-radius: 10px; overflow: hidden; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 12px;">
+        <div id="globalProgressBar" style="width: 0%; height: 100%; background: var(--accent); opacity: 0.6; border-radius: 10px;"></div>
+      </div>
+
+      <!-- ★ 大点：大阶段提示与升级提示并排 (双胶囊样式) -->
+      <div style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 15px; flex-wrap: wrap;">
+          <!-- 左侧：当前阶段 -->
+          <div id="majorStageText" style="font-size: 12px; color: var(--ink); background: var(--card-border); padding: 4px 14px; border-radius: 20px; font-weight: bold; letter-spacing: 1px;">
+              当前阶段：准备启动
+          </div>
+          <!-- 右侧：升级提示 (加上了白框和背景) -->
+          <div id="vipSpeedupHint" style="display: none; font-size: 12px; color: var(--accent); background: var(--card-border); border: 1px solid var(--accent); padding: 3px 13px; border-radius: 20px; font-weight: bold;">
+              🚀 升级 VIP 或 SVIP 可大幅加快配置速度！
+          </div>
+      </div>
+      
+      <p style="font-size: 12px; color: var(--ink-soft); opacity: 0.7;">请稍候，我们正在为您准备最纯粹的面包</p>
     </div>
+    
+    <!-- 错误状态 -->
     <div id="errorContent" style="display: none; text-align: center; width: 100%; height: 100%; flex-direction: column; justify-content: center; align-items: center;">
       <h3 style="color: #e74c3c;">☁️ 连接云端失败</h3>
       <p id="errorMsg" style="margin: 15px 0; color: var(--ink-soft); font-size: 14px; max-width: 80%;"></p>
@@ -38,8 +77,28 @@
 
   <div id="breadBg"></div>
 
+  <!-- ================= 主界面头部 ================= -->
   <header class="fade-in">
-    <div class="logo"><span class="b">🍞</span>面包浏览器 <small>Bread Browser</small></div>
+    <!-- Logo 区域 (已整合为主界面左上角带版本号的排版) -->
+    <div class="logo">
+      <span class="b">🍞</span>
+      <div style="display: flex; flex-direction: column; align-items: flex-start; margin-left: 10px;">
+          <!-- 第一行：标题 + 版本号 并排 -->
+          <div style="display: flex; align-items: baseline; gap: 8px;">
+              <div style="font-size: 20px; font-weight: 800; line-height: 1; letter-spacing: 1px; color: var(--ink);">
+                  面包浏览器
+              </div>
+              <span id="readme-version-badge" style="font-size: 11px; background: var(--card-border); color: var(--ink); padding: 2px 6px; border-radius: 6px; font-weight: bold; border: 1px solid var(--ink-soft); line-height: 1;">
+                  v1.5.1
+              </span>
+          </div>
+          <!-- 第二行：英文副标题 -->
+          <span style="font-size: 12px; font-weight: 400; color: var(--ink-soft); margin-top: 4px; letter-spacing: 0.5px;">
+              Bread Browser
+          </span>
+      </div>
+    </div>
+    
     <div class="header-actions">
       <button class="icon-btn" id="btnPoints" title="积分中心">🎁 <span id="pointsDisplay" style="font-size:14px; font-weight:bold; margin-left:4px;">0</span></button>
       <button class="icon-btn" id="btnMail" title="邮件中心" style="display:none;">📧 <span id="mailDot"></span></button>
@@ -71,15 +130,13 @@
     <button class="btn ghost" id="btnDevGenCode" style="color:#27ae60; border-color:#27ae60;">🎲 生成兑换码</button>
     <button class="btn ghost" id="btnDevStartRain" style="color:#e91e63; border-color:#e91e63;">🧧 立即触发红包雨</button>
     <button class="btn ghost" id="btnDevAutoRain" style="color:#9b59b6; border-color:#9b59b6;">🤖 自动领取红包(0.7秒)</button>
-    
-    <!-- 全新的三端执行按钮 -->
     <button class="btn ghost" id="btnDevRunJs" style="color:#3498db; border-color:#3498db;">💻 执行自定义代码(前端)</button>
     <button class="btn ghost" id="btnDevRunSql" style="color:#9b59b6; border-color:#9b59b6;">📡 执行自定义代码(后端)</button>
     <button class="btn ghost" id="btnDevRunAll" style="color:#e67e22; border-color:#e67e22;">🚀 执行自定义代码(前端+后端)</button>
-    
     <button class="dev-btn-close" id="btnDevClose">关闭开发者模式</button>
   </div>
 
+  <!-- ================= 主内容区 ================= -->
   <main>
     <div class="fade-in" style="animation-delay: .05s">
       <h1 class="clock" id="clock"></h1>
@@ -101,6 +158,7 @@
     <div class="sites" id="sitesGrid"></div>
   </main>
 
+  <!-- ================= 各种弹窗 ================= -->
   <div class="overlay" id="siteOverlay">
     <div class="modal">
       <h3>🧺 添加站点</h3>
@@ -167,7 +225,7 @@
       <h3>🎨 主题中心</h3>
       <p style="font-size:12px; text-align:center; color:var(--ink-soft); margin-bottom:16px;">带 ✨ 的为 Plus 豪华版（支持烟花）</p>
       <div id="themeGrid" class="theme-grid-layout"></div> 
-            <!-- 这是主题网格和设置面板区域的结尾 -->
+      
       <div id="fwConfigArea" style="display:none; margin-top: 16px; background: rgba(0,0,0,0.04); padding: 15px; border-radius: 12px; border: 1px dashed var(--accent);">
         <h4 style="font-size: 14px; margin-bottom: 12px; color: var(--accent);">⚙️ 当前主题烟花参数设置 (0.1 - 5.0 倍)</h4>
         
@@ -181,14 +239,12 @@
           <input type="number" id="fwFreqInput" min="0.1" max="5" step="0.1" value="1" style="width: 90px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); text-align: center; font-size: 15px; font-weight: bold; outline: none;">
         </div>
         
-        <!-- ★ 修复：拉大间距，垂直居中对齐 -->
         <div style="display:flex; justify-content:space-between; align-items:center; padding-top: 4px;">
           <span style="font-size:13px; font-weight:600;">🎨 适配主题颜色：</span>
-          <input type="checkbox" id="fwThemeColorToggle" style="width: 22px; height: 22px; cursor: pointer; margin-right: 34px;">
+          <input type="checkbox" id="fwThemeColorToggle" style="width: 22px; height: 22px; cursor: pointer;">
         </div>
       </div>
       
-      <!-- ★ 修复：保证底部关闭按钮居中，不被挤到旁边 -->
       <div class="modal-actions" style="justify-content: center; margin-top: 24px; width: 100%;">
         <button class="btn primary" id="btnThemeClose" style="width: 100%; padding: 12px; font-size: 15px; border-radius: 12px;">关闭面板</button>
       </div>
@@ -265,13 +321,12 @@
     </div>
   </div>
 
-    <div class="overlay" id="registerSuccessOverlay">
+  <div class="overlay" id="registerSuccessOverlay">
     <div class="modal">
       <h3>🎉 注册成功</h3>
       <p style="font-size: 14px; margin-bottom: 12px; text-align: center;">你的专属面包 Key（用于找回密码）：</p>
       <div id="regSuccessKey" style="background: var(--card); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 14px; text-align: center; word-break: break-all; color: var(--accent); user-select: all; border: 1px dashed var(--accent); margin-bottom: 12px; cursor: pointer;" title="点击复制"></div>
       
-      <!-- ★ 新增：云端专属 UUID 展示 -->
       <p style="font-size: 14px; margin-bottom: 12px; text-align: center;">你的云端专属 UID（身份标识）：</p>
       <div id="regSuccessUid" style="background: var(--card); padding: 12px; border-radius: 8px; font-family: monospace; font-size: 13px; text-align: center; word-break: break-all; color: var(--ink-soft); user-select: all; border: 1px dashed var(--card-border); margin-bottom: 12px; cursor: pointer;" title="点击复制"></div>
 
@@ -357,7 +412,6 @@
     </div>
   </div>
 
-  <!-- 全新的三端双输入框弹窗 -->
   <div class="overlay" id="runCodeOverlay">
     <div class="modal" style="width:min(500px, 100%);">
       <h3 id="runCodeTitle">💻 执行自定义代码(前端)</h3>
@@ -386,7 +440,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <!-- 脚本加载 -->
+  <!-- ================= 脚本加载 ================= -->
   <script src="js/01-core.js" defer></script>
   <script src="js/02-config.js" defer></script>
   <script src="js/03-ui.js" defer></script>
@@ -400,5 +454,36 @@
   <script src="js/12-fireworks.js" defer></script>
   <script src="js/11-init.js" defer></script>
   <script src="js/13-updater.js" defer></script>
+  <script src="js/14-loading.js" defer></script>
+  <script src="js/friend-system/01-friends-core.js" defer></script>
+  <script src="js/friend-system/02-friends-chat.js" defer></script>
+  <script src="js/friend-system/03-friends-gift.js" defer></script>
+  
+  <!-- 版本号动态读取 -->
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const res = await fetch(`./README.md?t=${Date.now()}`);
+        if (res.ok) {
+          const text = await res.text();
+          // 正则匹配版本号，包含可能的 -Beta 后缀
+          const match = text.match(/版本：[v]?([a-zA-Z0-9.\-]+)/);
+          if (match && match[1]) {
+            const fullVersion = match[1]; 
+            
+            // 1. 更新主界面左上角的版本号
+            const badge = document.getElementById('readme-version-badge');
+            if (badge) badge.textContent = `v${fullVersion}`;
+            
+            // 2. 同步更新加载界面的版本号
+            const loadingBadge = document.getElementById('loading-version-badge');
+            if (loadingBadge) loadingBadge.textContent = `v${fullVersion}`;
+          }
+        }
+      } catch (error) {
+        console.log("无法读取 README.md，使用默认版本号");
+      }
+    });
+  </script>
 </body>
 </html>

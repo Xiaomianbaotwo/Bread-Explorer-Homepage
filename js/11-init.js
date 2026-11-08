@@ -1,6 +1,6 @@
 /* =========================================================
    11-init.js
-   时钟、每日一句、启动连接遮罩、真实进度条、云端拉取
+   时钟、每日一句、背景特效、云端强拉取、实时监听 (极致防闪烁+红点修复版)
    ========================================================= */
 
 function tick() {
@@ -64,125 +64,127 @@ function popBread(b, e) {
   b.remove(); setTimeout(spawnBread, 2500);
 }
 
-function updateProgress(percent, text) {
-  const bar = document.getElementById('progressBar');
-  const txt = document.getElementById('loadingText');
-  if (bar) bar.style.width = percent + '%';
-  if (txt) txt.textContent = `${text} (${percent}%)`;
-}
+// ================= 核心：极致对比，绝不随意重绘 =================
+let isSyncing = false;
 
-function enterApp() {
-  const overlay = document.getElementById('loadingOverlay');
-  if (overlay) {
-    overlay.style.opacity = '0';
-    setTimeout(() => { overlay.style.display = 'none'; }, 500);
+window.syncFromCloud = async function() {
+  if (isSyncing || !currentUser) return;
+  isSyncing = true;
+  try {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) { isSyncing = false; return; }
+
+    const { data: assets, error: errAssets } = await sb.from('bread_assets').select('*').eq('user_id', user.id).maybeSingle();
+    const { data: prefs, error: errPrefs } = await sb.from('bread_preferences').select('*').eq('user_id', user.id).maybeSingle();
+
+    if (errAssets) throw errAssets;
+
+    let users = getUsersDB();
+    let u = users[currentUser];
+    if (!u) { isSyncing = false; return; }
+
+    let hasDataChanged = false;
+    let needRefreshMail = false;
+
+    // 1. 检查资产（积分、VIP、邮件）
+    if (assets) {
+      const cloudEmailsStr = JSON.stringify(assets.emails || []);
+      const localEmailsStr = JSON.stringify(u.emails || []);
+      
+      if (u.points !== (assets.points || 0) || u.vipType !== (assets.vip_type || 'none')) {
+         u.points = assets.points || 0;
+         u.vipType = assets.vip_type || 'none';
+         u.vipExpire = assets.vip_expire || 0;
+         u.unlockedThemes = assets.unlocked_themes || [];
+         hasDataChanged = true;
+      }
+
+      if (cloudEmailsStr !== localEmailsStr) {
+         u.emails = assets.emails || [];
+         needRefreshMail = true;
+         hasDataChanged = true;
+      }
+    }
+
+    // 2. 检查偏好（主题、面包篮、字体）
+    if (prefs) {
+      // 检查主题
+      const cloudTheme = prefs.current_theme || 'default';
+      if (u.currentTheme !== cloudTheme) {
+        u.currentTheme = cloudTheme;
+        currentTheme = cloudTheme; // 更新全局变量
+        if (typeof applyTheme === 'function') applyTheme(); // 只有变了才重绘背景
+        hasDataChanged = true;
+      }
+
+      // 检查面包篮 (Sites)
+      const cloudSites = prefs.sites || [];
+      const localSites = store.get(`bb-sites_${currentUser}`, []);
+      if (JSON.stringify(cloudSites) !== JSON.stringify(localSites)) {
+        localStorage.setItem(`bb-sites_${currentUser}`, JSON.stringify(cloudSites));
+        if (typeof sites !== 'undefined') {
+           sites = cloudSites; // 更新全局变量
+           if (typeof renderSites === 'function') renderSites(); // 只有变了才重绘面包篮
+        }
+        hasDataChanged = true;
+      }
+
+      const s = prefs.settings || {};
+      u.enFont = s.enFont || 'default';
+      u.zhFont = s.zhFont || 'default';
+      u.fwSpeed = s.fwSpeed || 1.0;
+      u.fwFreq = s.fwFreq || 1.0;
+      u.fwThemeColor = s.fwThemeColor !== false;
+      u.screenShake = s.screenShake !== false;
+      u.customFonts = s.customFonts || [];
+    }
+
+    if (hasDataChanged) {
+      localStorage.setItem('bb-users', JSON.stringify(users));
+      // ★ 核心修复：只要有数据更新，立刻触发 updateUserUI()，保证红点亮起
+      if (typeof updateUserUI === 'function') updateUserUI();
+      $('#pointsDisplay').textContent = u.points || 0;
+    }
+    
+    if (needRefreshMail && $('#mailOverlay') && $('#mailOverlay').classList.contains('show')) {
+      if (typeof renderMails === 'function') renderMails();
+    }
+
+  } catch (err) {
+    console.error('❌ 实时同步拉取失败:', err);
+  } finally {
+    setTimeout(() => { isSyncing = false; }, 1500);
   }
-  loadUserData();
-}
-
-function showConnectError(msg) {
-  document.getElementById('loadingContent').style.display = 'none';
-  document.getElementById('errorContent').style.display = 'block';
-  document.getElementById('errorMsg').textContent = msg || '无法连接到云端，请检查网络。';
-}
-
-document.getElementById('btnLocalMode').onclick = () => { enterApp(); };
-document.getElementById('btnRetryCloud').onclick = () => {
-  document.getElementById('loadingContent').style.display = 'flex';
-  document.getElementById('errorContent').style.display = 'none';
-  syncFromCloud();
 };
 
-async function syncFromCloud() {
-  const curUser = localStorage.getItem('bb-current-user') ? JSON.parse(localStorage.getItem('bb-current-user')) : null;
-  
-  if (!curUser) {
-    updateProgress(100, '本地模式加载完毕');
-    setTimeout(enterApp, 500);
-    return;
-  }
-
-  try {
-    updateProgress(15, '正在向云端强校验身份');
-    const { data: { user }, error } = await sb.auth.getUser();
-
-    if (error || !user) {
-      localStorage.removeItem('bb-current-user');
-      currentUser = null; 
-      showConnectError('账号已失效或被管理员注销，请重新登录。');
-      document.getElementById('btnLocalMode').style.display = 'none';
-      return; 
-    }
-
-    const uid = user.id;
-
-    updateProgress(35, '身份校验通过，正在读取资产');
-    const resAssets = await sb.from('bread_assets').select('*').eq('user_id', uid).maybeSingle();
-
-    updateProgress(60, '正在同步个性化设置');
-    const resPrefs = await sb.from('bread_preferences').select('*').eq('user_id', uid).maybeSingle();
-    
-    updateProgress(80, '正在同步基础资料');
-    const resUser = await sb.from('bread_users').select('*').eq('user_id', uid).maybeSingle();
-
-    if (resUser.error) throw new Error(resUser.error.message);
-
-    if (resUser.data) {
-      const u = resUser.data;
-      const a = resAssets.data || {};
-      const p = resPrefs.data || {};
-      const set = p.settings || {};
-
-      const assembledUser = {
-        email: u.email, user_id: u.user_id, key: u.bread_key, avatar: u.avatar || '', regTime: u.reg_time || Date.now(),
-        points: a.points || 0, 
-        vipType: a.vip_type || 'none', // ★ 只保留 vipType
-        vipExpire: a.vip_expire || 0, 
-        unlockedThemes: a.unlocked_themes || [], emails: a.emails || [],
-        customSites: p.sites || [], customHistory: p.history || [], currentTheme: p.current_theme || 'default',
-        enFont: set.enFont || 'default', zhFont: set.zhFont || 'default', 
-        fwSpeed: set.fwSpeed || 1.0, fwFreq: set.fwFreq || 1.0, fwThemeColor: set.fwThemeColor !== false,
-        screenShake: set.screenShake !== false,
-        customFonts: set.customFonts || [], lastRpDate: set.lastRpDate || '', rpCount: set.rpCount || 0, 
-        day7Sent: set.day7Sent || false, day30Sent: set.day30Sent || false, springSent: set.springSent || false,
-        lastPointDate: set.lastPointDate || ''
-      };
-
-      let localUsers = store.get('bb-users', {});
-      localUsers[curUser] = { ...localUsers[curUser], ...assembledUser };
-      localStorage.setItem('bb-users', JSON.stringify(localUsers));
-    } else {
-      throw new Error('云端数据异常，找不到您的档案');
-    }
-
-    updateProgress(100, '连接成功');
-    setTimeout(enterApp, 800);
-
-  } catch (e) {
-    console.error('❌ 云端拉取失败', e);
-    showConnectError(e.message);
-  }
+// ================= 后台实时监听逻辑 =================
+let syncTimer = null;
+function debouncedSync() {
+    clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+        window.syncFromCloud();
+    }, 800); 
 }
-
-syncFromCloud();
 
 async function initRealtime() {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return;
 
   sb.channel('realtime_assets')
-    .on('postgres_changes', { event: '*', schema: 'public', table: 'bread_assets', filter: `user_id=eq.${user.id}` }, (payload) => {
-        if (typeof syncFromCloud === 'function') syncFromCloud();
-        if ($('#mailOverlay').classList.contains('show')) renderMails();
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bread_assets', filter: `user_id=eq.${user.id}` }, () => {
+        debouncedSync();
+    }).subscribe();
+
+  sb.channel('realtime_prefs')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'bread_preferences', filter: `user_id=eq.${user.id}` }, () => {
+        debouncedSync();
     }).subscribe();
 }
-setTimeout(initRealtime, 1000);
+
+setTimeout(initRealtime, 2000);
 
 document.addEventListener('visibilitychange', () => {
-  if (!document.hidden && currentUser) {
-    if (typeof syncFromCloud === 'function') syncFromCloud();
+  if (!document.hidden && typeof currentUser !== 'undefined' && currentUser && window.isLoadedOnce) {
+    if (typeof window.syncFromCloud === 'function') window.syncFromCloud();
   }
 });
-
-setTimeout(checkRedPacketTime, 2000);
-setInterval(checkRedPacketTime, 60 * 1000);

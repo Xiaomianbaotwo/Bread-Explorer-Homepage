@@ -3,37 +3,24 @@
    ========================================================= */
 
 const THEMES = {
-  // 面包原野系列 (纯正烘焙，无快餐)
   default:         { name: '🍞 面包原野', emojis: ['🍞','🥐','🥖','🥯','🥨','🧇','🥪','🍩'], level: 0 },
   'default-plus':  { name: '✨ 面包原野 Plus', emojis: ['🍞','🥐','🥖','🥯','🥨','🧇','🥪','🍩','🥞','🧈','🥛','🧁','🍰','🥧'], level: 0, cost: 15000 },
   'default-max':   { name: '👑 面包原野 Max', emojis: ['🍞','🥐','🥖','🥯','🥨','🧇','🥪','🍩','🥞','🧈','🥛','🧁','🍰','🥧','🍪','🍫','🍬','🍭','🍮','🍯','🍦','🍧','🍨'], level: 0, cost: 30000 },
-
-  // 新春大吉系列 (加入了糖)
   spring:          { name: '🧧 新春大吉', emojis: ['🧧','🏮','🧨','🐉','🥟','🍊'], level: 0, isSpring: true },
   'spring-plus':   { name: '✨ 新春大吉 Plus', emojis: ['🧧','🏮','🧨','🐉','🥟','🍊','🍬','🍭'], level: 0, isSpring: true, cost: 15000 },
   'spring-max':    { name: '👑 新春大吉 Max', emojis: ['🧧','🏮','🧨','🐉','🥟','🍊','🍬','🍭','🍫','🧁','🍩','🍪'], level: 0, isSpring: true, cost: 30000 },
-
-  // 美食天堂系列
   food:            { name: '🍔 美食天堂', emojis: ['🍔','🍕','🍟','🍗'], level: 0 },
   'food-plus':     { name: '✨ 美食天堂 Plus', emojis: ['🍔','🍕','🍟','🍗','🌭','🌮','🍣','🍜'], level: 0, cost: 15000 },
   'food-max':      { name: '👑 美食天堂 Max', emojis: ['🍔','🍕','🍟','🍗','🌭','🌮','🍣','🍜','🍝','🍤','🍩','🍦','🍰','🍫','🍬','🍿','🥟','🍱','🥗','🥪','🥙','🥘','🍲','🍛','🍚','🍙','🍘','🍥','🍡','🍧','🍨','🧁','🍮','🍭','🍪','🌰','🥜'], level: 0, cost: 30000 },
-
-  // 水果圣地系列
   fruit:           { name: '🍎 水果圣地', emojis: ['🍎','🍌','🍇','🍉'], level: 0 },
   'fruit-plus':    { name: '✨ 水果圣地 Plus', emojis: ['🍎','🍌','🍇','🍉','🍓','🍒','🍑','🍍'], level: 0, cost: 15000 },
   'fruit-max':     { name: '👑 水果圣地 Max', emojis: ['🍎','🍌','🍇','🍉','🍓','🍒','🍑','🍍','🥭','🍊','🍋','🍐','🥝','🫐','🥥','🥑','🍅','🍆','🥕','🌽','🥦','🍄'], level: 0, cost: 30000 },
-
-  // 樱花漫舞系列
   sakura:          { name: '🌸 樱花漫舞', emojis: ['🌸','🌸','🦋'], level: 2, cost: 1500 },
   'sakura-plus':   { name: '✨ 樱花漫舞 Plus', emojis: ['🌸','🌸','🦋','🍃','💮'], level: 2, cost: 15000 },
   'sakura-max':    { name: '👑 樱花漫舞 Max', emojis: ['🌸','🌸','🦋','🍃','💮','🌺','🌷','🌹','🏵️'], level: 2, cost: 30000 },
-
-  // 花语秘境系列 (价格调整为 5000 / 15000 / 30000)
   flower:          { name: '🌺 花语秘境', emojis: ['🌹','🌷','🌻'], level: 0, cost: 5000 },
   'flower-plus':   { name: '✨ 花语秘境 Plus', emojis: ['🌹','🌷','🌻','🌼','🌺'], level: 0, cost: 15000 },
   'flower-max':    { name: '👑 花语秘境 Max', emojis: ['🌹','🌷','🌻','🌼','🌺','🌸','🪷','🏵️','🦋'], level: 0, cost: 30000 },
-
-  // 其他原有主题
   gold:            { name: '🪙 黄金时代', emojis: ['🪙','💰','💴','🪙'], level: 1 },
   'gold-plus':     { name: '✨ 黄金时代 Plus', emojis: ['🪙','💰','💴','🪙'], level: 1, cost: 15000 },
   cyber:           { name: '⚡ 赛博朋克', emojis: ['⚡','💻','🟢','⚡'], level: 1 },
@@ -80,9 +67,55 @@ const SHOP_ITEMS = [
   { label: '1 年', days: 365, base: 120000 }
 ];
 
+window.cloudSettings = {
+  vip_vip_prices: SHOP_ITEMS,
+  vip_svip_prices: SHOP_ITEMS.map(i => ({ ...i, base: i.base * 3 })),
+  theme_prices: {},
+  redpacket_config: {
+    normal_prob: 0.60, normal_value: 1, gold_prob: 0.25, gold_value: 3,
+    star_prob: 0.08, star_value: 5, diamond_prob: 0.07, diamond_value: 10,
+    event_multiplier: 2.0, event_start: "2026-11-08", event_end: "2026-11-18"
+  }
+};
+
+async function loadCloudSettings() {
+  try {
+    const [resVip, resTheme, resRp] = await Promise.all([
+      sb.from('bread_vip_prices').select('*'),
+      sb.from('bread_theme_prices').select('*'),
+      sb.from('bread_redpacket_config').select('*')
+    ]);
+
+    if (resVip.data) {
+      // ★ 核心修改：统一过滤 type 为 'vip' 和 'svip'
+      window.cloudSettings.vip_vip_prices = resVip.data.filter(i => i.type === 'vip').map(i => ({ days: i.days, base: i.price, label: i.label }));
+      window.cloudSettings.vip_svip_prices = resVip.data.filter(i => i.type === 'svip').map(i => ({ days: i.days, base: i.price, label: i.label }));
+    }
+
+    if (resTheme.data) {
+      const tObj = {};
+      resTheme.data.forEach(i => { tObj[i.theme_key] = i.price; });
+      window.cloudSettings.theme_prices = tObj;
+    }
+
+    if (resRp.data) {
+      const rpObj = {};
+      resRp.data.forEach(i => {
+        const val = isNaN(Number(i.config_value)) ? i.config_value : Number(i.config_value);
+        rpObj[i.config_key] = val;
+      });
+      window.cloudSettings.redpacket_config = rpObj;
+    }
+    console.log('✅ 成功从云端加载最新定价与概率配置');
+  } catch (e) {
+    console.warn('⚠️ 云端配置拉取失败，使用本地保底配置', e);
+  }
+}
+
+setTimeout(loadCloudSettings, 1000);
+
 let currentHour = new Date().getHours();
 let defaultTheme = (currentHour >= 7 && currentHour < 18) ? 'light' : 'dark';
-
 let currentUser = store.get('bb-current-user', null);
 let theme = store.get('bb-theme', defaultTheme);
 let engineKey = store.get('bb-engine', 'quark');

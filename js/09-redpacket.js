@@ -1,5 +1,6 @@
 /* =========================================================
    09-redpacket.js
+   红包雨（完全接入扁平表配置）
    ========================================================= */
 
 let rpTimer = null;
@@ -35,7 +36,7 @@ function checkRedPacketTime() {
     u.lastRpDate = sessionStr; 
     store.set('bb-users', users);
     
-    showConfirmModal('🧧 金币红包雨！', '现在开启限时 10 秒的红包雨！普通红包+1，金色礼盒+3，星星+5，钻石+10！', () => {
+    showConfirmModal('🧧 金币红包雨！', '现在开启限时 10 秒的红包雨！快来抢金币吧！', () => {
       startRedPacketRain();
     }, false);
   }
@@ -55,6 +56,15 @@ function startRedPacketRain() {
   document.body.classList.add('modal-open');
 
   const rainLayer = $('#redPacketRain');
+  
+  const config = window.cloudSettings.redpacket_config || {};
+  
+  // 判断活动是否生效
+  const todayStr = new Date().toISOString().split('T')[0];
+  const isEvent = (config.event_start && config.event_end) && (todayStr >= config.event_start && todayStr <= config.event_end);
+  
+  const baseInterval = 130;
+  const dropInterval = isEvent ? baseInterval / 2 : baseInterval;
 
   rpTimer = setInterval(() => {
     if (rpTimeLeft <= 0) return;
@@ -65,10 +75,18 @@ function startRedPacketRain() {
     let value = 1;
     let color = '#e74c3c';
 
-    if (randType < 0.60) { typeClass = 'pkt-normal'; value = 1; color = '#e74c3c'; }
-    else if (randType < 0.85) { typeClass = 'pkt-gold'; value = 3; color = '#f1c40f'; }
-    else if (randType < 0.93) { typeClass = 'pkt-star'; value = 5; color = '#f39c12'; }
-    else { typeClass = 'pkt-diamond'; value = 10; color = '#00bcd4'; }
+    let acc = 0;
+    acc += (config.normal_prob || 0.60);
+    if (randType < acc) { typeClass = 'pkt-normal'; value = config.normal_value || 1; color = '#e74c3c'; }
+    else {
+      acc += (config.gold_prob || 0.25);
+      if (randType < acc) { typeClass = 'pkt-gold'; value = config.gold_value || 3; color = '#f1c40f'; }
+      else {
+        acc += (config.star_prob || 0.08);
+        if (randType < acc) { typeClass = 'pkt-star'; value = config.star_value || 5; color = '#f39c12'; }
+        else { typeClass = 'pkt-diamond'; value = config.diamond_value || 10; color = '#00bcd4'; }
+      }
+    }
 
     packet.className = 'falling-packet ' + typeClass;
     packet.style.left = Math.random() * 80 + 10 + 'vw';
@@ -80,7 +98,14 @@ function startRedPacketRain() {
       if (!window.isRpPlaying || packet.dataset.clicked) return;
       packet.dataset.clicked = '1';
       
-      rpClickCount += value;
+      let finalValue = value;
+      let isDouble = false;
+      if (isEvent && Math.random() < 0.05) {
+        finalValue = value * 2;
+        isDouble = true;
+      }
+
+      rpClickCount += finalValue;
       $('#rpScore').textContent = `已收集：${rpClickCount} 金币`;
       
       let clientX = e ? e.clientX : 0;
@@ -106,13 +131,13 @@ function startRedPacketRain() {
       }
 
       const floatText = document.createElement('div');
-      floatText.textContent = `+${value} 🪙`;
+      floatText.textContent = isDouble ? `+${finalValue} 🪙 双倍!` : `+${finalValue} 🪙`;
       floatText.style.position = 'fixed';
       floatText.style.left = clientX + 'px';
       floatText.style.top = clientY + 'px';
-      floatText.style.color = color;
+      floatText.style.color = isDouble ? '#ff00ff' : color;
       floatText.style.fontWeight = 'bold';
-      floatText.style.fontSize = '30px';
+      floatText.style.fontSize = isDouble ? '36px' : '30px';
       floatText.style.textShadow = '0 2px 5px rgba(0,0,0,0.8)';
       floatText.style.pointerEvents = 'none';
       floatText.style.zIndex = '99999';
@@ -184,7 +209,7 @@ function startRedPacketRain() {
 
     rainLayer.appendChild(packet);
     setTimeout(() => { if (packet.parentNode) packet.remove(); }, duration * 1000);
-  }, 130);
+  }, dropInterval);
 
   rpInterval = setInterval(() => {
     rpTimeLeft -= 0.1;
@@ -243,7 +268,7 @@ function endRedPacketRain() {
     const active = u.vipExpire > Date.now();
     const start = (active && u.vipType === (vLevel === 2 ? 'svip' : 'vip')) ? u.vipExpire : Date.now();
     
-    u.vipType = vLevel === 2 ? 'svip' : 'vip'; // ★ 直接改 type
+    u.vipType = vLevel === 2 ? 'svip' : 'vip';
     u.vipExpire = start + (vDays * 86400000);
     
     store.set('bb-users', users);
