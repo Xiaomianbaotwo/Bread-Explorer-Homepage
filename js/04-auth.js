@@ -1,6 +1,6 @@
 /* =========================================================
    04-auth.js
-   官方 Auth 纯净版 (彻底剥离 vipLevel，适配新主题)
+   官方 Auth 纯净版 (加入测试功能开关同步)
    ========================================================= */
 
 function getSafeEmailPrefix(name) {
@@ -21,11 +21,8 @@ function getUsersDB() {
 
   for (let name in db) {
     if (typeof db[name] === 'string') db[name] = { pwd: db[name], key: generateKey(), regTime: Date.now(), avatar: '', vipType: 'none', vipExpire: 0, currentTheme: 'default', emails: [], lastPointDate: '' };
-    
-    // ★ 移除 vipLevel 校验
     if (typeof db[name].vipType !== 'string') db[name].vipType = 'none';
     if (typeof db[name].vipExpire !== 'number') db[name].vipExpire = 0;
-    
     if (typeof db[name].currentTheme !== 'string') db[name].currentTheme = 'default';
     if (!Array.isArray(db[name].emails)) db[name].emails = [];
     if (typeof db[name].regTime !== 'number' || !db[name].regTime) db[name].regTime = Date.now();
@@ -274,6 +271,7 @@ function startVipCountdown(expireTime) {
   update(); window.vipTimer = setInterval(update, 1000);
 }
 
+// ★ 修改了 btnUser 的点击事件，使其打开时自动同步内测开关状态
 $('#btnUser').onclick = () => {
   if (!currentUser) { renderQuickLogin(); return openOverlay($('#loginOverlay')); }
   const users = getUsersDB(); const u = users[currentUser]; const status = checkVipStatus(u);
@@ -294,6 +292,13 @@ $('#btnUser').onclick = () => {
   else { $('#userAvatar').style.display = 'none'; $('#userAvatarPlaceholder').style.display = 'flex'; $('#userAvatarPlaceholder').textContent = currentUser[0].toUpperCase(); }
 
   $('#screenShakeToggle').checked = u.screenShake !== false;
+  
+  // ★ 核心同步：打开用户中心时，读取开关状态
+  const betaToggle = document.getElementById('showBetaToggle');
+  if (betaToggle) {
+    betaToggle.checked = localStorage.getItem('bb-show-beta') === 'true';
+  }
+
   openOverlay($('#userOverlay'));
 };
 
@@ -457,7 +462,6 @@ $('#btnAuthSubmit').onclick = async () => {
     
     showToast('欢迎回来', '🍞');
     
-    // ★ 核心修复：登录成功后，立刻刷新本地数据与界面UI
     loadUserData(); 
     
     if (typeof checkRedPacketTime === 'function') checkRedPacketTime();
