@@ -1,16 +1,18 @@
 /* =========================================================
-   js/friend-system/01-friends-core.js (全新升级版)
+   js/friend-system/01-friends-core.js (内测隐藏控制版)
    ========================================================= */
 
 window.currentChatFriend = null;
 
 function initFriendsUI() {
   const logoArea = document.querySelector('.logo');
+  const showBeta = localStorage.getItem('bb-show-beta') === 'true';
+
   if (logoArea && !document.getElementById('btnFriendsEntry')) {
-    // 1. 注入好友按钮
+    // 1. 注入好友按钮（根据测试开关状态决定是否显示）
     const btn = document.createElement('div');
     btn.id = 'btnFriendsEntry';
-    btn.style = "display: inline-flex; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--card-border); color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; position: relative;";
+    btn.style = `display: ${showBeta ? 'inline-flex' : 'none'}; align-items: center; gap: 6px; margin-top: 6px; padding: 4px 10px; border-radius: 10px; background: var(--card); border: 1px solid var(--card-border); color: var(--ink); font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.2s; position: relative;`;
     btn.innerHTML = `👥 好友 <span id="friendRequestDot" class="friend-request-dot" style="position:absolute; top:-4px; right:-4px; width:8px; height:8px; background:#e74c3c; border-radius:50%; display:none;"></span>`;
     
     // 2. 注入建议箱按钮
@@ -41,6 +43,7 @@ function initFriendsUI() {
     };
   }
 
+  // 3. 注入好友大弹窗
   if (!document.getElementById('friendsOverlay')) {
     const overlay = document.createElement('div');
     overlay.className = 'overlay';
@@ -67,7 +70,6 @@ function initFriendsUI() {
           </div>
           <div class="chat-header" id="chatHeader" style="display:none;">
             <span id="chatFriendName">好友名字</span>
-            <!-- ★ 需求3：在 × 左边加入“清空聊天记录”按钮 -->
             <button id="btnClearChat" title="清空本地聊天记录" style="margin-left:auto; background:transparent; border:none; color:#e74c3c; font-size:16px; cursor:pointer; margin-right: 15px; font-weight: bold;">🗑 清空</button>
             <button class="btn-close-chat" id="btnCloseFriends" style="background:transparent; border:none; color:var(--ink-soft); font-size:20px; cursor:pointer;">✕</button>
           </div>
@@ -83,7 +85,6 @@ function initFriendsUI() {
     document.body.appendChild(overlay);
   }
 
-  // ★ 需求4：彻底重置窗口状态，防止残留
   const closeModal = () => {
     document.getElementById('friendsOverlay').classList.remove('show');
     window.currentChatFriend = null; 
@@ -93,7 +94,6 @@ function initFriendsUI() {
   document.getElementById('btnCloseFriendsTop').onclick = closeModal;
   document.getElementById('btnCloseFriends').onclick = closeModal;
   
-  // 清空记录按钮事件
   document.getElementById('btnClearChat').onclick = () => {
     if (typeof window.clearLocalChat === 'function') window.clearLocalChat();
   };
@@ -130,7 +130,6 @@ async function loadFriendsList() {
       return;
     }
 
-    // ★ 需求5：关注的好友排前面
     friendsData.sort((a, b) => (b.is_starred === true ? 1 : 0) - (a.is_starred === true ? 1 : 0));
 
     listEl.innerHTML = '';
@@ -149,7 +148,6 @@ async function loadFriendsList() {
         <div class="star-btn" data-name="${uInfo.friend_name}" style="cursor:pointer; font-size:16px; padding:4px; margin-left:auto;">${starIcon}</div>
       `;
       
-      // 点击好友进入聊天
       el.querySelector('.friend-info').onclick = () => {
         document.querySelectorAll('.friend-item').forEach(i => i.classList.remove('active'));
         el.classList.add('active');
@@ -159,7 +157,6 @@ async function loadFriendsList() {
         }
       };
 
-      // 点击爱心切换关注
       el.querySelector('.star-btn').onclick = async (e) => {
         e.stopPropagation();
         const isStarred = !uInfo.is_starred;
@@ -167,7 +164,7 @@ async function loadFriendsList() {
           .update({ is_starred: isStarred })
           .eq('user_name', currentUser)
           .eq('friend_name', uInfo.friend_name);
-        await loadFriendsList(); // 重新加载列表排序
+        await loadFriendsList();
       };
 
       listEl.appendChild(el);
@@ -179,7 +176,6 @@ async function loadFriendsList() {
   }
 }
 
-// 搜索与同意好友部分保持不变
 async function doSearchUser() {
   const keyword = document.getElementById('friendSearchInput').value.trim();
   const resultBox = document.getElementById('friendSearchResult');
@@ -252,4 +248,24 @@ async function updateFriendRequestDot() {
 document.addEventListener('DOMContentLoaded', () => {
   initFriendsUI();
   setTimeout(updateFriendRequestDot, 3000);
+
+  // ★ 核心：监听用户中心里的“内测开关”
+  const betaToggle = document.getElementById('showBetaToggle');
+  if (betaToggle) {
+    betaToggle.checked = localStorage.getItem('bb-show-beta') === 'true';
+    betaToggle.onchange = (e) => {
+      const isChecked = e.target.checked;
+      localStorage.setItem('bb-show-beta', isChecked);
+      
+      const btn = document.getElementById('btnFriendsEntry');
+      if (btn) btn.style.display = isChecked ? 'inline-flex' : 'none';
+      
+      if (!isChecked) {
+        const overlay = document.getElementById('friendsOverlay');
+        if (overlay && overlay.classList.contains('show')) {
+          overlay.classList.remove('show');
+        }
+      }
+    };
+  }
 });
