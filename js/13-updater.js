@@ -4,7 +4,7 @@
    ========================================================= */
 
 // ★ 1. 当前版本号（你可以随便加后缀了，比如 -Release, -Beta）
-const CURRENT_VERSION = "1.5.9"; 
+const CURRENT_VERSION = "1.5.91"; 
 
 // 2. 安全比较版本号大小的函数（已加入智能净化）
 function isNewerVersion(cloudVer, localVer) {
