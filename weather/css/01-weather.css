@@ -1,0 +1,75 @@
+/* =========================================================
+   weather/css/01-weather.css
+   天气系统专属样式 (悬浮卡片 + 长图详情 + 地区选择)
+   ========================================================= */
+
+/* 左侧悬浮小卡片 */
+#weatherWidget {
+  position: fixed;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 170px;
+  background: var(--card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--card-border);
+  border-radius: 20px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  z-index: 50;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--ink);
+}
+
+#weatherWidget:hover {
+  transform: translateY(-50%) scale(1.05);
+  border-color: var(--accent);
+}
+
+#weatherWidget .w-city { font-size: 14px; font-weight: bold; color: var(--ink-soft); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+#weatherWidget .w-icon { font-size: 42px; margin: 8px 0; filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1)); }
+#weatherWidget .w-temp { font-size: 24px; font-weight: 800; margin-bottom: 4px; }
+#weatherWidget .w-text { font-size: 13px; color: var(--accent); font-weight: 600; }
+
+/* 手机屏幕隐藏左侧卡片，避免挡住主页时钟 */
+@media (max-width: 900px) {
+  #weatherWidget { display: none; }
+}
+
+/* ============ 全景天气详情长图弹窗 ============ */
+#weatherDetailOverlay { align-items: center; justify-content: center; z-index: 999; }
+
+.weather-detail-modal {
+  width: min(500px, 92vw);
+  max-height: 85vh;
+  background: var(--bg1);
+  border: 1px solid var(--card-border);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: var(--shadow);
+  overflow-y: auto;
+  animation: rise 0.3s;
+}
+.weather-detail-modal::-webkit-scrollbar { width: 6px; }
+.weather-detail-modal::-webkit-scrollbar-thumb { background: var(--card-border); border-radius: 10px; }
+
+.w-detail-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--card-border); padding-bottom: 12px; margin-bottom: 16px; }
+.w-detail-header h3 { margin: 0; font-size: 20px; color: var(--accent); }
+.w-detail-header button { background: transparent; border: none; color: var(--ink-soft); font-size: 20px; cursor: pointer; }
+
+.w-section { margin-bottom: 20px; }
+.w-section h4 { font-size: 15px; font-weight: bold; margin-bottom: 10px; color: var(--ink); display: flex; align-items: center; gap: 6px; }
+.w-list { list-style: none; padding: 0; margin: 0; }
+.w-list li { font-size: 14px; line-height: 1.7; margin-bottom: 8px; padding-left: 16px; position: relative; color: var(--ink); }
+.w-list li::before { content: '•'; position: absolute; left: 0; color: var(--accent); font-weight: bold; }
+
+.w-tips { background: rgba(255, 152, 0, 0.1); border-left: 4px solid var(--accent); padding: 12px; border-radius: 0 8px 8px 0; font-size: 14px; line-height: 1.6; color: var(--ink); }
+
+/* ============ 地区选择下拉框弹窗 ============ */
+#citySelectOverlay { z-index: 10000; }
+.city-select-modal { width: min(400px, 90vw); background: var(--bg1); border-radius: 20px; padding: 24px; box-shadow: var(--shadow); text-align: center; }
+.city-select-modal select { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--card-border); background: var(--card); color: var(--ink); font-size: 15px; outline: none; margin-bottom: 20px; appearance: none; text-align: center; }
