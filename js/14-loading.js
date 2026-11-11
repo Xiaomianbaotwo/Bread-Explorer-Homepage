@@ -1,6 +1,6 @@
 /* =========================================================
    14-loading.js
-   独立启动引擎 (精准阶段百分比 + 绝对匀速)
+   独立启动引擎 (全面封锁本地模式版)
    ========================================================= */
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
@@ -8,14 +8,13 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 let isBooting = false; 
 let isEntered = false;
 
-let totalDuration = 18000; // 总时长
+let totalDuration = 18000; 
 let startTime = 0;
 let animationFrameId = null;
 let countdownInterval = null;
 let requestDone = false; 
-let currentPhaseText = ""; // ★ 新增：保存当前阶段的纯文本
+let currentPhaseText = ""; 
 
-// 100ms 极速倒计时刷新
 function startCountdown() {
   const timeLeftEl = document.getElementById('loadingTimeLeft');
   if (!timeLeftEl) return;
@@ -36,7 +35,6 @@ function startCountdown() {
   }, 100);
 }
 
-// 总时间轴动画引擎
 function startTimelineAnimation() {
   const globalBar = document.getElementById('globalProgressBar');
   const progressBar = document.getElementById('progressBar');
@@ -56,13 +54,9 @@ function startTimelineAnimation() {
     let globalPercent = (elapsed / totalDuration) * 100;
     if (globalPercent > 100) globalPercent = 100;
     
-    // 1. 下进度条（粗条）：按总时间绝对匀速
     if (globalBar) globalBar.style.width = globalPercent + '%';
-
-    // 2. 大字百分比：绑定总进度
     if (percentText) percentText.textContent = `已加载 ${Math.floor(globalPercent)}%`;
 
-    // 3. 上进度条（细条）：当前阶段进度
     let upperPercent = 0;
     if (elapsed < 5000) {
       upperPercent = (elapsed / 5000) * 100;
@@ -74,22 +68,18 @@ function startTimelineAnimation() {
     
     if (progressBar) progressBar.style.width = upperPercent + '%';
 
-    // ★ 4. 核心修改：在阶段文字前面拼接当前阶段百分比
     if (textEl && currentPhaseText) {
         let htmlStr = currentPhaseText.replace(
             /(\[\d+\/\d+\])/, 
             '<span style="font-size: 16px; font-weight: 900; color: var(--accent); margin-right: 6px; vertical-align: text-bottom;">$1</span>'
         );
-        // 在最前面加上 阶段百分比
         textEl.innerHTML = `<span style="color: var(--ink-soft); font-weight: bold; margin-right: 6px;">${Math.floor(upperPercent)}%</span>` + htmlStr;
     }
 
     if (elapsed < totalDuration) {
       animationFrameId = requestAnimationFrame(frame);
     } else {
-      if (requestDone) {
-        enterApp();
-      }
+      if (requestDone) enterApp();
     }
   }
   
@@ -97,12 +87,10 @@ function startTimelineAnimation() {
   startCountdown();
 }
 
-// 智能文字切换时间轴 (不再直接操作DOM，只更新纯文本变量)
 function updateTextByTimeline(isVip, isSvip) {
   const modeName = isSvip ? 'SVIP 极速配置' : (isVip ? 'VIP 极速配置' : '配置环境');
   
   setTimeout(() => { if(!isEntered) updateMajorStage('1/2 - 连接云端金库'); }, 0);
-  
   setTimeout(() => { if(!isEntered) currentPhaseText = '[1/7] 正在与云端金库建立加密连接...'; }, 100);
   setTimeout(() => { if(!isEntered) currentPhaseText = '[2/7] 正在强校验身份凭证...'; }, 800);
   setTimeout(() => { if(!isEntered) currentPhaseText = '[3/7] 身份校验通过，读取云端资产...'; }, 1500);
@@ -111,7 +99,6 @@ function updateTextByTimeline(isVip, isSvip) {
   setTimeout(() => { if(!isEntered) currentPhaseText = '[6/7] 正在核对最后的数据指纹...'; }, 3900);
   setTimeout(() => { if(!isEntered) currentPhaseText = '[7/7] 正在等待云端最终握手协议...'; }, 4700);
   
-  // 5秒后切阶段二
   setTimeout(() => {
     if(!isEntered) {
       updateMajorStage(`2/2 - ${modeName}`);
@@ -139,8 +126,13 @@ function enterApp() {
   if (animationFrameId) cancelAnimationFrame(animationFrameId);
   if (countdownInterval) clearInterval(countdownInterval);
   
+  // 强行把进度条填满 100%
   const globalBar = document.getElementById('globalProgressBar');
+  const progressBar = document.getElementById('progressBar');
+  const percentText = document.getElementById('loadingPercent');
   if (globalBar) globalBar.style.width = '100%';
+  if (progressBar) progressBar.style.width = '100%';
+  if (percentText) percentText.textContent = '已加载 100%';
   
   if (typeof loadUserData === 'function') loadUserData(); 
 
@@ -163,8 +155,31 @@ function showConnectError(msg) {
   document.getElementById('errorMsg').textContent = msg || '无法连接到云端，请检查网络。';
 }
 
-document.getElementById('btnLocalMode').onclick = () => { enterApp(); };
+// 🚨 核心：把本地模式按钮变成警告触发器，并原地拦截
+document.getElementById('btnLocalMode').onclick = () => {
+  const errorContent = document.getElementById('errorContent');
+  
+  // 如果已经有提示了，就不重复加了
+  if (document.getElementById('localModeBlockTip')) return;
+  
+  const tip = document.createElement('div');
+  tip.id = 'localModeBlockTip';
+  tip.style = "color: #e74c3c; font-size: 13px; margin-top: 15px; font-weight: bold; background: rgba(231, 76, 60, 0.1); padding: 10px 14px; border-radius: 8px; border: 1px dashed #e74c3c; animation: rise 0.3s;";
+  tip.textContent = "⚠️ 本地模式处于开发者测试专属使用内容，普通用户暂不可用。";
+  
+  const btnGroup = errorContent.querySelector('.modal-actions');
+  if (btnGroup) {
+    btnGroup.parentNode.insertBefore(tip, btnGroup.nextSibling);
+  } else {
+    errorContent.appendChild(tip);
+  }
+};
+
 document.getElementById('btnRetryCloud').onclick = () => {
+  // 重新尝试时，要把之前的警告清掉
+  const tip = document.getElementById('localModeBlockTip');
+  if (tip) tip.remove();
+  
   document.getElementById('loadingContent').style.display = 'flex';
   document.getElementById('errorContent').style.display = 'none';
   startCloudSync();
@@ -177,13 +192,11 @@ async function startCloudSync() {
   try {
     const { data: authData, error } = await sb.auth.getUser();
     
+    // ★ 彻底封锁：如果没有登录状态，直接报错，不再自动进入本地模式！
     if (error || !authData.user) {
-      updateMajorStage('本地模式');
-      currentPhaseText = '[1/1] 云端无登录状态，正在进入本地模式';
-      totalDuration = 1500; 
-      startTimelineAnimation();
-      requestDone = true;
-      return;
+      showConnectError('未检测到有效的登录状态，由于本地模式已封锁，请刷新页面重试。');
+      isBooting = false;
+      return; 
     }
 
     let curUser = localStorage.getItem('bb-current-user') ? JSON.parse(localStorage.getItem('bb-current-user')) : null;
@@ -210,11 +223,9 @@ async function startCloudSync() {
       else if (type === 'vip') { isVip = true; totalDuration = 8000; }
     }
 
-    // ★ 核心：获取到身份后，立刻开启时间轴和文字变化（纯动画先跑起来）
     updateTextByTimeline(isVip, isSvip);
     startTimelineAnimation();
 
-    // 后台静默请求其他数据
     const uid = authData.user.id;
     const resPrefs = await sb.from('bread_preferences').select('*').eq('user_id', uid).maybeSingle();
     const resUser = await sb.from('bread_users').select('*').eq('user_id', uid).maybeSingle();
@@ -243,7 +254,6 @@ async function startCloudSync() {
 
     requestDone = true;
     
-    // 如果动画提前跑完，立刻进
     let elapsed = performance.now() - startTime;
     if (elapsed >= totalDuration) {
       enterApp();
@@ -257,9 +267,7 @@ async function startCloudSync() {
 
 function updateMajorStage(stageText) {
   const majorTxt = document.getElementById('majorStageText');
-  if (majorTxt) {
-    majorTxt.innerHTML = `当前阶段：${stageText}`;
-  }
+  if (majorTxt) majorTxt.innerHTML = `当前阶段：${stageText}`;
 }
 
 // 启动！
